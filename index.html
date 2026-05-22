@@ -477,10 +477,10 @@
                 <span class="font-bold text-[#1B4332]">© 2026 Today's Table</span>. All rights reserved.
             </div>
             <div class="flex space-x-6">
-                <a href="mailto:naver082932@gmail.com" class="hover:underline flex items-center space-x-1">
+                <button onclick="showEmailCopy()" class="hover:underline flex items-center space-x-1 bg-none border-none cursor-pointer text-slate-400 hover:text-slate-600 transition-colors">
                     <i class="fa-solid fa-envelope text-[#E76F51]"></i>
                     <span>문의하기</span>
-                </a>
+                </button>
                 <a href="javascript:void(0)" onclick="openTermsModal()" class="hover:underline">이용약관</a>
                 <a href="javascript:void(0)" onclick="openPrivacyModal()" class="hover:underline">개인정보처리방침</a>
             </div>
@@ -2126,6 +2126,16 @@
             });
             
             renderBlog();
+        }
+
+        // 이메일 복사 함수
+        function showEmailCopy() {
+            const email = 'naver082932@gmail.com';
+            navigator.clipboard.writeText(email).then(() => {
+                showToast("naver082932@gmail.com 복사되었습니다!");
+            }).catch(() => {
+                alert('naver082932@gmail.com');
+            });
         }
 
         // ============================================
