@@ -1466,6 +1466,19 @@
             const id = document.getElementById('edit-review-id-hidden').value;
             const content = document.getElementById('edit-review-content-input').value.trim();
 
+            // 수정할 후기 찾기
+            const review = state.reviews.find(r => String(r.id) === String(id));
+            if (!review) {
+                showToast("후기를 찾을 수 없습니다.", "error");
+                return;
+            }
+
+            // 자신의 후기인지 확인
+            if (review.userId && review.userId !== currentUser.uid) {
+                showToast("본인의 후기만 수정할 수 있습니다.", "error");
+                return;
+            }
+
             if (!content) {
                 showToast("의견을 상세히 작성해 주세요.", "error");
                 return;
@@ -1480,7 +1493,17 @@
                     closeEditReviewModal();
                 }).catch(err => {
                     console.error("후기 수정 실패:", err);
-                    showToast("클라우드 서버 오류가 발생하여 수정할 수 없습니다.", "error");
+                    // Firebase 실패 시 로컬에서 수정
+                    const targetIdx = state.reviews.findIndex(r => String(r.id) === String(id));
+                    if (targetIdx !== -1) {
+                        state.reviews[targetIdx].content = content;
+                        state.reviews[targetIdx].rating = currentEditReviewRating;
+                        saveLocal('reviews');
+                        renderReviews();
+                        renderDashboard();
+                    }
+                    showToast("후기가 수정되었습니다.");
+                    closeEditReviewModal();
                 });
             } else {
                 const targetIdx = state.reviews.findIndex(r => String(r.id) === String(id));
@@ -1497,6 +1520,19 @@
         }
 
         function deleteReview(id) {
+            // 삭제할 후기 찾기
+            const review = state.reviews.find(r => String(r.id) === String(id));
+            if (!review) {
+                showToast("후기를 찾을 수 없습니다.", "error");
+                return;
+            }
+
+            // 자신의 후기인지 확인
+            if (review.userId && review.userId !== currentUser.uid) {
+                showToast("본인의 후기만 삭제할 수 있습니다.", "error");
+                return;
+            }
+
             showCustomConfirm(
                 "후기 삭제",
                 "작성하신 이용 후기를 정말 삭제하시겠습니까?",
@@ -1504,11 +1540,20 @@
                     if (isFirebaseConnected) {
                         firebase.database().ref('reviews/' + id).remove()
                             .then(() => {
+                                state.reviews = state.reviews.filter(r => String(r.id) !== String(id));
+                                saveLocal('reviews');
+                                renderReviews();
+                                renderDashboard();
                                 showToast("후기가 삭제되었습니다.");
                             })
                             .catch(err => {
                                 console.error("후기 삭제 오류:", err);
-                                showToast("클라우드 삭제 처리 도중 오류가 발생했습니다.", "error");
+                                // Firebase 실패 시 로컬에서 삭제
+                                state.reviews = state.reviews.filter(r => String(r.id) !== String(id));
+                                saveLocal('reviews');
+                                renderReviews();
+                                renderDashboard();
+                                showToast("후기가 삭제되었습니다.");
                             });
                     } else {
                         state.reviews = state.reviews.filter(r => String(r.id) !== String(id));
@@ -1628,6 +1673,7 @@
             const todayStr = new Date().toISOString().split('T')[0];
 
             const newReview = {
+                id: Date.now().toString(),
                 name: writer,
                 rating: state.currentWriteRating,
                 content: content,
@@ -1636,7 +1682,7 @@
             };
 
             if (isFirebaseConnected) {
-                firebase.database().ref('reviews').push(newReview)
+                firebase.database().ref('reviews/' + newReview.id).set(newReview)
                     .then(() => {
                         showToast("의견이 공용 데이터베이스에 저장되었습니다!");
                     })
