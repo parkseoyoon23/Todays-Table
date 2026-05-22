@@ -67,6 +67,7 @@
                 <button onclick="navigate('dashboard')" class="hover:text-[#E76F51] transition-colors nav-link text-emerald-100" id="nav-dashboard">대시보드</button>
                 <button onclick="navigate('fridge')" class="hover:text-[#E76F51] transition-colors nav-link text-emerald-100" id="nav-fridge">나의 냉장고</button>
                 <button onclick="navigate('planner')" class="hover:text-[#E76F51] transition-colors nav-link text-emerald-100" id="nav-planner">식단 메이커</button>
+                <button onclick="navigate('blog')" class="hover:text-[#E76F51] transition-colors nav-link text-emerald-100" id="nav-blog">블로그</button>
                 <button onclick="navigate('reviews')" class="hover:text-[#E76F51] transition-colors nav-link text-emerald-100" id="nav-reviews">이용자 후기</button>
             </nav>
             <div class="flex items-center space-x-4">
@@ -357,7 +358,110 @@
             </div>
         </section>
 
+        <!-- 5. 블로그 탭 -->
+        <section id="tab-blog" class="hidden space-y-6">
+            <div class="space-y-6">
+                <!-- 블로그 헤더 배너 -->
+                <div class="bg-gradient-to-r from-[#1B4332] to-[#2D6A4F] text-white rounded-3xl p-6 md:p-8 shadow-lg">
+                    <div class="space-y-2">
+                        <span class="bg-[#E76F51] text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Community Tips & Stories</span>
+                        <h2 class="text-3xl md:text-4xl font-black leading-tight">Today's Table 블로그</h2>
+                        <p class="text-emerald-100 text-sm md:text-base">식재료 관리 팁, 건강 식단 레시피, 사용자들의 생활 이야기를 나누는 공간입니다.</p>
+                    </div>
+                </div>
+
+                <!-- 블로그 글 작성 버튼 + 필터 -->
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <button onclick="openBlogWriteModal()" class="bg-[#E76F51] hover:bg-[#d65f41] text-white px-6 py-3 rounded-xl font-bold text-sm flex items-center space-x-2 transition-all shadow-md">
+                        <i class="fa-solid fa-pen-nib"></i>
+                        <span>글쓰기</span>
+                    </button>
+                    <div class="flex gap-2 flex-wrap">
+                        <button onclick="filterBlog('all')" class="filter-btn px-4 py-2 rounded-lg text-xs font-bold transition-all bg-[#1B4332] text-white" data-filter="all">전체</button>
+                        <button onclick="filterBlog('tip')" class="filter-btn px-4 py-2 rounded-lg text-xs font-bold transition-all bg-slate-200 text-slate-600" data-filter="tip">팁</button>
+                        <button onclick="filterBlog('recipe')" class="filter-btn px-4 py-2 rounded-lg text-xs font-bold transition-all bg-slate-200 text-slate-600" data-filter="recipe">레시피</button>
+                        <button onclick="filterBlog('story')" class="filter-btn px-4 py-2 rounded-lg text-xs font-bold transition-all bg-slate-200 text-slate-600" data-filter="story">일상</button>
+                    </div>
+                </div>
+
+                <!-- 블로그 글 목록 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="blog-list-container">
+                    <!-- JS동적 렌더링 -->
+                </div>
+
+                <!-- 빈 상태 메시지 -->
+                <div id="blog-empty-state" class="col-span-full text-center py-16">
+                    <div class="text-slate-300 text-5xl mb-4"><i class="fa-solid fa-pen"></i></div>
+                    <p class="text-slate-500 font-medium">아직 게시된 글이 없습니다.</p>
+                    <p class="text-slate-400 text-sm mt-2">첫 번째 이야기를 나눠보세요!</p>
+                </div>
+            </div>
+        </section>
+
     </main>
+
+    <!-- 블로그 글 상세 보기 모달 -->
+    <div id="blog-detail-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6 bg-[#1B4332] text-white flex justify-between items-center sticky top-0 z-10">
+                <h3 class="font-bold text-lg" id="blog-detail-title"></h3>
+                <button onclick="closeBlogDetailModal()" class="text-white hover:text-slate-200"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="flex items-center justify-between text-xs text-slate-500 border-b border-slate-100 pb-4">
+                    <div class="space-x-3">
+                        <span id="blog-detail-author"></span>
+                        <span id="blog-detail-date"></span>
+                    </div>
+                    <span id="blog-detail-category" class="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full font-bold text-xs"></span>
+                </div>
+                <div id="blog-detail-content" class="prose prose-sm max-w-none text-slate-700 leading-relaxed whitespace-pre-wrap"></div>
+                <div id="blog-detail-actions" class="flex gap-3 pt-4 border-t border-slate-100">
+                    <button id="blog-delete-btn" onclick="deleteBlogPost()" class="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 py-2.5 rounded-xl font-bold text-xs transition-all">삭제</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 블로그 글 작성 모달 -->
+    <div id="blog-write-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6 bg-[#1B4332] text-white flex justify-between items-center sticky top-0 z-10">
+                <h3 class="font-bold text-lg"><i class="fa-solid fa-pen-nib mr-2 text-emerald-400"></i>새 글 작성</h3>
+                <button onclick="closeBlogWriteModal()" class="text-white hover:text-slate-200"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-600">글 제목</label>
+                    <input type="text" id="blog-write-title" placeholder="제목을 입력해주세요" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-600">카테고리</label>
+                    <select id="blog-write-category" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                        <option value="tip">팁</option>
+                        <option value="recipe">레시피</option>
+                        <option value="story">일상</option>
+                    </select>
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-600">닉네임</label>
+                    <input type="text" id="blog-write-author" placeholder="작성자 이름" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-600">내용</label>
+                    <textarea id="blog-write-content" rows="8" placeholder="여러분의 팁, 레시피, 일상을 자유롭게 공유해주세요." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none"></textarea>
+                </div>
+
+                <div class="flex gap-3 pt-2">
+                    <button onclick="closeBlogWriteModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-3 rounded-xl font-bold text-xs transition-all">취소</button>
+                    <button onclick="saveBlogPost()" class="flex-1 bg-[#1B4332] hover:bg-[#122e22] text-white py-3 rounded-xl font-bold text-xs transition-all">등록하기</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- 푸터 -->
     <footer class="bg-white border-t border-slate-100 py-6 mt-12">
@@ -624,6 +728,7 @@
             currentFilter: "ALL",
             weeklyPlanner: [],
             reviews: [],
+            blogs: [],
             currentWriteRating: 5,
             currentTab: "dashboard"
         };
@@ -663,6 +768,9 @@
                 state.weeklyPlanner = JSON.parse(JSON.stringify(defaultPlanner));
             }
 
+            const localBlogs = localStorage.getItem('todays_table_blogs');
+            state.blogs = ensureArray(localBlogs ? JSON.parse(localBlogs) : []);
+
             const localTab = localStorage.getItem('todays_table_tab');
             state.currentTab = localTab || 'dashboard';
         }
@@ -675,6 +783,8 @@
                 localStorage.setItem('todays_table_ingredients', JSON.stringify(state.ingredients));
             } else if (key === 'planner') {
                 localStorage.setItem('todays_table_planner', JSON.stringify(state.weeklyPlanner));
+            } else if (key === 'blogs') {
+                localStorage.setItem('todays_table_blogs', JSON.stringify(state.blogs));
             }
         }
 
@@ -701,6 +811,14 @@
                 saveLocal('reviews');
                 renderReviews();
                 renderDashboard();
+            });
+
+            // 실시간 블로그 리스너 가동
+            firebase.database().ref('blogs').on('value', (snapshot) => {
+                const data = snapshot.val();
+                state.blogs = ensureArray(data);
+                saveLocal('blogs');
+                renderBlog();
             });
 
             // 사용자 로그인 상태 감시 리스너
@@ -924,6 +1042,7 @@
             document.getElementById('tab-dashboard').classList.add('hidden');
             document.getElementById('tab-fridge').classList.add('hidden');
             document.getElementById('tab-planner').classList.add('hidden');
+            document.getElementById('tab-blog').classList.add('hidden');
             document.getElementById('tab-reviews').classList.add('hidden');
 
             document.getElementById(`tab-${tabId}`).classList.remove('hidden');
@@ -975,6 +1094,8 @@
                     unlockedView.classList.remove('hidden');
                     renderPlanner();
                 }
+            } else if (tabId === 'blog') {
+                renderBlog();
             } else if (tabId === 'reviews') {
                 const lockedForm = document.getElementById('review-write-locked');
                 const unlockedForm = document.getElementById('review-write-unlocked');
@@ -1713,6 +1834,226 @@
             writerInput.value = '';
             contentInput.value = '';
             setReviewRating(5);
+        }
+
+        // ============================================
+        // BLOG CONTROLLER (블로그 관리)
+        // ============================================
+        let currentBlogFilter = 'all';
+        let currentBlogDetailId = null;
+
+        function renderBlog() {
+            const container = document.getElementById('blog-list-container');
+            const emptyState = document.getElementById('blog-empty-state');
+            
+            container.innerHTML = '';
+            
+            // 필터링 적용
+            let filteredBlogs = state.blogs;
+            if (currentBlogFilter !== 'all') {
+                filteredBlogs = state.blogs.filter(b => b.category === currentBlogFilter);
+            }
+            
+            // 최신순 정렬
+            filteredBlogs = filteredBlogs.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            if (filteredBlogs.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            
+            emptyState.classList.add('hidden');
+            
+            filteredBlogs.forEach(blog => {
+                const categoryLabel = {
+                    'tip': '팁',
+                    'recipe': '레시피',
+                    'story': '일상'
+                }[blog.category] || blog.category;
+                
+                const categoryColor = {
+                    'tip': 'bg-blue-50 text-blue-700',
+                    'recipe': 'bg-amber-50 text-amber-700',
+                    'story': 'bg-rose-50 text-rose-700'
+                }[blog.category] || 'bg-slate-50 text-slate-700';
+                
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col cursor-pointer';
+                card.onclick = () => openBlogDetailModal(blog.id);
+                
+                const preview = blog.content.substring(0, 100) + (blog.content.length > 100 ? '...' : '');
+                
+                card.innerHTML = `
+                    <div class="p-4 flex-grow space-y-3">
+                        <div class="flex items-start justify-between gap-2">
+                            <h3 class="font-bold text-sm text-slate-800 line-clamp-2 flex-grow">${blog.title}</h3>
+                            <span class="text-xs font-bold px-2 py-1 rounded-lg whitespace-nowrap ${categoryColor}">${categoryLabel}</span>
+                        </div>
+                        <p class="text-xs text-slate-500 line-clamp-2">${preview}</p>
+                    </div>
+                    <div class="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                        <span>${blog.author}</span>
+                        <span>${blog.date}</span>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        function openBlogWriteModal() {
+            if (!currentUser) {
+                showToast("로그인 후 글을 작성할 수 있습니다.", "error");
+                return;
+            }
+            document.getElementById('blog-write-modal').classList.remove('hidden');
+        }
+
+        function closeBlogWriteModal() {
+            document.getElementById('blog-write-modal').classList.add('hidden');
+            document.getElementById('blog-write-title').value = '';
+            document.getElementById('blog-write-author').value = '';
+            document.getElementById('blog-write-content').value = '';
+            document.getElementById('blog-write-category').value = 'tip';
+        }
+
+        function saveBlogPost() {
+            const title = document.getElementById('blog-write-title').value.trim();
+            const author = document.getElementById('blog-write-author').value.trim();
+            const content = document.getElementById('blog-write-content').value.trim();
+            const category = document.getElementById('blog-write-category').value;
+
+            if (!title) {
+                showToast("제목을 입력해주세요.", "error");
+                return;
+            }
+            if (!author) {
+                showToast("닉네임을 입력해주세요.", "error");
+                return;
+            }
+            if (!content) {
+                showToast("내용을 입력해주세요.", "error");
+                return;
+            }
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            
+            const newBlog = {
+                id: Date.now().toString(),
+                title: title,
+                author: author,
+                content: content,
+                category: category,
+                date: todayStr,
+                userId: currentUser.uid
+            };
+
+            if (isFirebaseConnected) {
+                firebase.database().ref('blogs/' + newBlog.id).set(newBlog)
+                    .then(() => {
+                        showToast("글이 성공적으로 등록되었습니다!");
+                        closeBlogWriteModal();
+                    })
+                    .catch((err) => {
+                        console.error("블로그 저장 에러:", err);
+                        showToast("클라우드 저장 실패. 로컬 모드로 임시 보존합니다.", "error");
+                        state.blogs.push(newBlog);
+                        saveLocal('blogs');
+                        renderBlog();
+                        closeBlogWriteModal();
+                    });
+            } else {
+                state.blogs.push(newBlog);
+                saveLocal('blogs');
+                renderBlog();
+                showToast("글이 로컬 브라우저에 안전하게 저장되었습니다!");
+                closeBlogWriteModal();
+            }
+        }
+
+        function openBlogDetailModal(blogId) {
+            const blog = state.blogs.find(b => b.id === blogId);
+            if (!blog) return;
+
+            currentBlogDetailId = blogId;
+            
+            const categoryLabel = {
+                'tip': '팁',
+                'recipe': '레시피',
+                'story': '일상'
+            }[blog.category] || blog.category;
+            
+            document.getElementById('blog-detail-title').innerText = blog.title;
+            document.getElementById('blog-detail-author').innerText = blog.author;
+            document.getElementById('blog-detail-date').innerText = blog.date;
+            document.getElementById('blog-detail-category').innerText = categoryLabel;
+            document.getElementById('blog-detail-content').innerText = blog.content;
+
+            // 본인 글일 때만 삭제 버튼 표시
+            const deleteBtn = document.getElementById('blog-delete-btn');
+            if (currentUser && currentUser.uid === blog.userId) {
+                deleteBtn.classList.remove('hidden');
+            } else {
+                deleteBtn.classList.add('hidden');
+            }
+
+            document.getElementById('blog-detail-modal').classList.remove('hidden');
+        }
+
+        function closeBlogDetailModal() {
+            document.getElementById('blog-detail-modal').classList.add('hidden');
+            currentBlogDetailId = null;
+        }
+
+        function deleteBlogPost() {
+            if (!currentBlogDetailId) return;
+
+            const blog = state.blogs.find(b => b.id === currentBlogDetailId);
+            if (!blog || (currentUser && currentUser.uid !== blog.userId)) {
+                showToast("본인이 작성한 글만 삭제할 수 있습니다.", "error");
+                return;
+            }
+
+            showCustomConfirm(
+                "글 삭제",
+                "이 글을 정말 삭제하시겠습니까?",
+                () => {
+                    if (isFirebaseConnected) {
+                        firebase.database().ref('blogs/' + currentBlogDetailId).remove()
+                            .then(() => {
+                                showToast("글이 삭제되었습니다.");
+                                closeBlogDetailModal();
+                            })
+                            .catch((err) => {
+                                console.error("삭제 에러:", err);
+                                showToast("삭제 실패. 다시 시도해주세요.", "error");
+                            });
+                    } else {
+                        state.blogs = state.blogs.filter(b => b.id !== currentBlogDetailId);
+                        saveLocal('blogs');
+                        renderBlog();
+                        closeBlogDetailModal();
+                        showToast("글이 삭제되었습니다.");
+                    }
+                }
+            );
+        }
+
+        function filterBlog(category) {
+            currentBlogFilter = category;
+            
+            // 필터 버튼 스타일 업데이트
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                if (btn.getAttribute('data-filter') === category) {
+                    btn.classList.remove('bg-slate-200', 'text-slate-600');
+                    btn.classList.add('bg-[#1B4332]', 'text-white');
+                } else {
+                    btn.classList.remove('bg-[#1B4332]', 'text-white');
+                    btn.classList.add('bg-slate-200', 'text-slate-600');
+                }
+            });
+            
+            renderBlog();
         }
 
         // ============================================
