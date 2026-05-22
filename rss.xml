@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0">
+  <channel>
+    <title>Today's Table</title>
+    <link>https://mysiktak.com</link>
+    <description>스마트 식단 및 냉장고 관리 서비스</description>
+
+    <item>
+      <title>Today's Table 시작하기</title>
+      <link>https://mysiktak.com</link>
+      <description>냉장고와 식단을 관리해보세요.</description>
+    </item>
+
+  </channel>
+</rss>
