@@ -372,12 +372,19 @@
 
                 <!-- 블로그 글 작성 버튼 + 필터 -->
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <button onclick="openBlogWriteModal()" class="bg-[#E76F51] hover:bg-[#d65f41] text-white px-6 py-3 rounded-xl font-bold text-sm flex items-center space-x-2 transition-all shadow-md">
-                        <i class="fa-solid fa-pen-nib"></i>
-                        <span>글쓰기</span>
-                    </button>
+                    <div class="flex gap-3 flex-wrap">
+                        <button onclick="openBlogWriteModal('general')" class="bg-[#E76F51] hover:bg-[#d65f41] text-white px-6 py-3 rounded-xl font-bold text-sm flex items-center space-x-2 transition-all shadow-md">
+                            <i class="fa-solid fa-pen-nib"></i>
+                            <span>글쓰기</span>
+                        </button>
+                        <button id="admin-notice-btn" onclick="openBlogWriteModal('notice')" class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-bold text-sm flex items-center space-x-2 transition-all shadow-md hidden">
+                            <i class="fa-solid fa-bell"></i>
+                            <span>공지 작성</span>
+                        </button>
+                    </div>
                     <div class="flex gap-2 flex-wrap">
                         <button onclick="filterBlog('all')" class="filter-btn px-4 py-2 rounded-lg text-xs font-bold transition-all bg-[#1B4332] text-white" data-filter="all">전체</button>
+                        <button onclick="filterBlog('notice')" class="filter-btn px-4 py-2 rounded-lg text-xs font-bold transition-all bg-slate-200 text-slate-600" data-filter="notice">공지</button>
                         <button onclick="filterBlog('tip')" class="filter-btn px-4 py-2 rounded-lg text-xs font-bold transition-all bg-slate-200 text-slate-600" data-filter="tip">팁</button>
                         <button onclick="filterBlog('recipe')" class="filter-btn px-4 py-2 rounded-lg text-xs font-bold transition-all bg-slate-200 text-slate-600" data-filter="recipe">레시피</button>
                         <button onclick="filterBlog('story')" class="filter-btn px-4 py-2 rounded-lg text-xs font-bold transition-all bg-slate-200 text-slate-600" data-filter="story">일상</button>
@@ -403,7 +410,7 @@
     <!-- 블로그 글 상세 보기 모달 -->
     <div id="blog-detail-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
         <div class="bg-white rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div class="p-6 bg-[#1B4332] text-white flex justify-between items-center sticky top-0 z-10">
+            <div id="blog-detail-header" class="p-6 bg-[#1B4332] text-white flex justify-between items-center sticky top-0 z-10">
                 <h3 class="font-bold text-lg" id="blog-detail-title"></h3>
                 <button onclick="closeBlogDetailModal()" class="text-white hover:text-slate-200"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
@@ -426,8 +433,8 @@
     <!-- 블로그 글 작성 모달 -->
     <div id="blog-write-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
         <div class="bg-white rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div class="p-6 bg-[#1B4332] text-white flex justify-between items-center sticky top-0 z-10">
-                <h3 class="font-bold text-lg"><i class="fa-solid fa-pen-nib mr-2 text-emerald-400"></i>새 글 작성</h3>
+            <div id="blog-write-header" class="p-6 bg-[#1B4332] text-white flex justify-between items-center sticky top-0 z-10">
+                <h3 class="font-bold text-lg"><i class="fa-solid fa-pen-nib mr-2 text-emerald-400"></i><span id="blog-write-title-label">새 글 작성</span></h3>
                 <button onclick="closeBlogWriteModal()" class="text-white hover:text-slate-200"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
             <div class="p-6 space-y-4">
@@ -436,7 +443,7 @@
                     <input type="text" id="blog-write-title" placeholder="제목을 입력해주세요" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500">
                 </div>
 
-                <div class="space-y-1">
+                <div id="blog-write-category-container" class="space-y-1">
                     <label class="text-xs font-bold text-slate-600">카테고리</label>
                     <select id="blog-write-category" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500">
                         <option value="tip">팁</option>
@@ -470,6 +477,10 @@
                 <span class="font-bold text-[#1B4332]">© 2026 Today's Table</span>. All rights reserved.
             </div>
             <div class="flex space-x-6">
+                <a href="mailto:naver082932@gmail.com" class="hover:underline flex items-center space-x-1">
+                    <i class="fa-solid fa-envelope text-[#E76F51]"></i>
+                    <span>문의하기</span>
+                </a>
                 <a href="javascript:void(0)" onclick="openTermsModal()" class="hover:underline">이용약관</a>
                 <a href="javascript:void(0)" onclick="openPrivacyModal()" class="hover:underline">개인정보처리방침</a>
             </div>
@@ -732,6 +743,9 @@
             currentWriteRating: 5,
             currentTab: "dashboard"
         };
+
+        // 대표 계정 이메일 설정 (여기서 수정 가능)
+        const ADMIN_EMAIL = "naver082932@gmail.com";
 
         // 로컬 데이터 갱신 시간 추적 (Firebase 리스너 충돌 방지)
         let lastLocalIngredientsUpdate = 0;
@@ -1095,6 +1109,13 @@
                     renderPlanner();
                 }
             } else if (tabId === 'blog') {
+                // 대표 계정만 공지 작성 버튼 표시
+                const adminBtn = document.getElementById('admin-notice-btn');
+                if (currentUser && currentUser.email === ADMIN_EMAIL) {
+                    adminBtn.classList.remove('hidden');
+                } else {
+                    adminBtn.classList.add('hidden');
+                }
                 renderBlog();
             } else if (tabId === 'reviews') {
                 const lockedForm = document.getElementById('review-write-locked');
@@ -1841,6 +1862,7 @@
         // ============================================
         let currentBlogFilter = 'all';
         let currentBlogDetailId = null;
+        let currentBlogWriteType = 'general'; // 'general' 또는 'notice'
 
         function renderBlog() {
             const container = document.getElementById('blog-list-container');
@@ -1854,31 +1876,35 @@
                 filteredBlogs = state.blogs.filter(b => b.category === currentBlogFilter);
             }
             
-            // 최신순 정렬
-            filteredBlogs = filteredBlogs.sort((a, b) => new Date(b.date) - new Date(a.date));
+            // 공지는 먼저, 그 다음 일반글을 최신순으로 정렬
+            const notices = filteredBlogs.filter(b => b.category === 'notice').sort((a, b) => new Date(b.date) - new Date(a.date));
+            const generalPosts = filteredBlogs.filter(b => b.category !== 'notice').sort((a, b) => new Date(b.date) - new Date(a.date));
+            const sortedBlogs = [...notices, ...generalPosts];
             
-            if (filteredBlogs.length === 0) {
+            if (sortedBlogs.length === 0) {
                 emptyState.classList.remove('hidden');
                 return;
             }
             
             emptyState.classList.add('hidden');
             
-            filteredBlogs.forEach(blog => {
-                const categoryLabel = {
+            sortedBlogs.forEach(blog => {
+                let categoryLabel = {
+                    'notice': '공지',
                     'tip': '팁',
                     'recipe': '레시피',
                     'story': '일상'
                 }[blog.category] || blog.category;
                 
-                const categoryColor = {
+                let categoryColor = {
+                    'notice': 'bg-red-50 text-red-700',
                     'tip': 'bg-blue-50 text-blue-700',
                     'recipe': 'bg-amber-50 text-amber-700',
                     'story': 'bg-rose-50 text-rose-700'
                 }[blog.category] || 'bg-slate-50 text-slate-700';
                 
                 const card = document.createElement('div');
-                card.className = 'bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col cursor-pointer';
+                card.className = 'bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col cursor-pointer ' + (blog.category === 'notice' ? 'ring-2 ring-red-200' : '');
                 card.onclick = () => openBlogDetailModal(blog.id);
                 
                 const preview = blog.content.substring(0, 100) + (blog.content.length > 100 ? '...' : '');
@@ -1886,7 +1912,7 @@
                 card.innerHTML = `
                     <div class="p-4 flex-grow space-y-3">
                         <div class="flex items-start justify-between gap-2">
-                            <h3 class="font-bold text-sm text-slate-800 line-clamp-2 flex-grow">${blog.title}</h3>
+                            <h3 class="font-bold text-sm text-slate-800 line-clamp-2 flex-grow">${blog.category === 'notice' ? '📢 ' : ''}${blog.title}</h3>
                             <span class="text-xs font-bold px-2 py-1 rounded-lg whitespace-nowrap ${categoryColor}">${categoryLabel}</span>
                         </div>
                         <p class="text-xs text-slate-500 line-clamp-2">${preview}</p>
@@ -1901,11 +1927,38 @@
             });
         }
 
-        function openBlogWriteModal() {
+        function openBlogWriteModal(type = 'general') {
             if (!currentUser) {
                 showToast("로그인 후 글을 작성할 수 있습니다.", "error");
                 return;
             }
+
+            // 공지는 대표 계정만 작성 가능
+            if (type === 'notice' && currentUser.email !== ADMIN_EMAIL) {
+                showToast("공지는 대표 계정만 작성할 수 있습니다.", "error");
+                return;
+            }
+
+            currentBlogWriteType = type;
+            
+            const titleLabel = document.getElementById('blog-write-title-label');
+            const categoryContainer = document.getElementById('blog-write-category-container');
+            const writeHeader = document.getElementById('blog-write-header');
+            
+            if (type === 'notice') {
+                titleLabel.innerText = '공지 작성';
+                writeHeader.classList.remove('bg-[#1B4332]');
+                writeHeader.classList.add('bg-red-600');
+                categoryContainer.classList.add('hidden');
+                document.getElementById('blog-write-category').value = 'notice';
+            } else {
+                titleLabel.innerText = '새 글 작성';
+                writeHeader.classList.remove('bg-red-600');
+                writeHeader.classList.add('bg-[#1B4332]');
+                categoryContainer.classList.remove('hidden');
+                document.getElementById('blog-write-category').value = 'tip';
+            }
+            
             document.getElementById('blog-write-modal').classList.remove('hidden');
         }
 
@@ -1915,13 +1968,14 @@
             document.getElementById('blog-write-author').value = '';
             document.getElementById('blog-write-content').value = '';
             document.getElementById('blog-write-category').value = 'tip';
+            currentBlogWriteType = 'general';
         }
 
         function saveBlogPost() {
             const title = document.getElementById('blog-write-title').value.trim();
             const author = document.getElementById('blog-write-author').value.trim();
             const content = document.getElementById('blog-write-content').value.trim();
-            const category = document.getElementById('blog-write-category').value;
+            let category = currentBlogWriteType === 'notice' ? 'notice' : document.getElementById('blog-write-category').value;
 
             if (!title) {
                 showToast("제목을 입력해주세요.", "error");
@@ -1951,7 +2005,7 @@
             if (isFirebaseConnected) {
                 firebase.database().ref('blogs/' + newBlog.id).set(newBlog)
                     .then(() => {
-                        showToast("글이 성공적으로 등록되었습니다!");
+                        showToast(category === 'notice' ? "공지가 성공적으로 등록되었습니다!" : "글이 성공적으로 등록되었습니다!");
                         closeBlogWriteModal();
                     })
                     .catch((err) => {
@@ -1966,7 +2020,7 @@
                 state.blogs.push(newBlog);
                 saveLocal('blogs');
                 renderBlog();
-                showToast("글이 로컬 브라우저에 안전하게 저장되었습니다!");
+                showToast(category === 'notice' ? "공지가 로컬 브라우저에 안전하게 저장되었습니다!" : "글이 로컬 브라우저에 안전하게 저장되었습니다!");
                 closeBlogWriteModal();
             }
         }
@@ -1978,15 +2032,33 @@
             currentBlogDetailId = blogId;
             
             const categoryLabel = {
+                'notice': '공지',
                 'tip': '팁',
                 'recipe': '레시피',
                 'story': '일상'
             }[blog.category] || blog.category;
             
-            document.getElementById('blog-detail-title').innerText = blog.title;
+            const detailHeader = document.getElementById('blog-detail-header');
+            
+            document.getElementById('blog-detail-title').innerText = blog.category === 'notice' ? '📢 ' + blog.title : blog.title;
             document.getElementById('blog-detail-author').innerText = blog.author;
             document.getElementById('blog-detail-date').innerText = blog.date;
-            document.getElementById('blog-detail-category').innerText = categoryLabel;
+            
+            const categorySpan = document.getElementById('blog-detail-category');
+            categorySpan.innerText = categoryLabel;
+            
+            if (blog.category === 'notice') {
+                detailHeader.classList.remove('bg-[#1B4332]');
+                detailHeader.classList.add('bg-red-600');
+                categorySpan.classList.remove('bg-emerald-50', 'text-emerald-700');
+                categorySpan.classList.add('bg-red-50', 'text-red-700');
+            } else {
+                detailHeader.classList.remove('bg-red-600');
+                detailHeader.classList.add('bg-[#1B4332]');
+                categorySpan.classList.remove('bg-red-50', 'text-red-700');
+                categorySpan.classList.add('bg-emerald-50', 'text-emerald-700');
+            }
+            
             document.getElementById('blog-detail-content').innerText = blog.content;
 
             // 본인 글일 때만 삭제 버튼 표시
