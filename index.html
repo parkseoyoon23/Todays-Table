@@ -984,7 +984,7 @@
             expiringListContainer.innerHTML = '';
 
             if (!currentUser) {
-                document.getElementById('total-ingredients-wrapper').innerHTML = `<span class="text-xs font-bold text-slate-400">로그인 필요</span>`;
+               document.getElementById('total-ingredients-wrapper').innerHTML = `<span onclick="openAuthModal()" class="inline-block px-3 py-1 text-base font-extrabold text-white bg-[#E76F51] rounded-full cursor-pointer hover:bg-[#d65f41] transition-all shadow-sm">로그인 필요</span>`;
                 document.getElementById('expiring-soon-count').innerText = "0";
                 
                 expiringListContainer.innerHTML = `
