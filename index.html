@@ -1,0 +1,1768 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="naver-site-verification" content="52b5968548c1bac61b266f5e853c682b35ef16ea" />
+    <title>Today's Table - 스마트 식단 & 냉장고 관리</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Firebase SDK Compat (싱글 파일 최적화 호환형) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
+    <!-- 카카오톡, 페이스북 공유 시 예쁘게 채워지는 오픈그래프 태그 -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Today's Table">
+    <meta property="og:description" content="우리 집 냉장고 속 재료로 직접 설계하는 웰니스 주간 식표 다이어리!">
+    <meta property="og:image" content="https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=600&q=80">
+    <meta property="og:url" content="https://mysiktak.com" />
+    <style>
+        body {
+            font-family: 'Noto Sans KR', 'Poppins', sans-serif;
+            background-color: #F8F9FA;
+        }
+        @keyframes slideIn {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-toast {
+            animation: slideIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800 flex flex-col antialiased">
+
+    <!-- 글로벌 헤더 네비게이션 -->
+    <header class="bg-[#1B4332] text-white sticky top-0 z-40 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="navigate('dashboard')">
+                <div class="bg-[#E76F51] text-white p-2 rounded-xl flex items-center justify-center shadow-md">
+                    <i class="fa-solid fa-cookie-bite text-lg"></i>
+                </div>
+                <div>
+                    <span class="font-extrabold text-xl tracking-tight font-[Poppins] text-white">Today's Table <span class="text-[#E76F51] text-xs font-bold block sm:inline sm:ml-1"></span></span>
+                </div>
+            </div>
+            <nav class="hidden md:flex space-x-6 text-sm font-medium">
+                <button onclick="navigate('dashboard')" class="hover:text-[#E76F51] transition-colors nav-link text-emerald-100" id="nav-dashboard">대시보드</button>
+                <button onclick="navigate('fridge')" class="hover:text-[#E76F51] transition-colors nav-link text-emerald-100" id="nav-fridge">나의 냉장고</button>
+                <button onclick="navigate('planner')" class="hover:text-[#E76F51] transition-colors nav-link text-emerald-100" id="nav-planner">식단 메이커</button>
+                <button onclick="navigate('reviews')" class="hover:text-[#E76F51] transition-colors nav-link text-emerald-100" id="nav-reviews">이용자 후기</button>
+            </nav>
+            <div class="flex items-center space-x-4">
+                <!-- 회원가입/로그인 액션 버튼 -->
+                <button id="auth-btn" onclick="openAuthModal()" class="bg-[#E76F51] hover:bg-[#d65f41] text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md">
+                    로그인 / 회원가입
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 컨텐츠 컨테이너 -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- 1. 대시보드 탭 (HOME) -->
+        <section id="tab-dashboard" class="space-y-8">
+            <!-- 웰컴 배너 -->
+            <div class="bg-gradient-to-r from-[#1B4332] to-[#2D6A4F] text-white rounded-3xl p-6 md:p-10 shadow-lg relative overflow-hidden">
+                <div class="relative z-10 max-w-2xl space-y-4">
+                    <span class="bg-[#E76F51] text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">가정 생활 밀착형 식생활 비서</span>
+                    <h1 class="text-3xl md:text-4xl font-black leading-tight">내 손안의 식탁 솔루션<br>식재료 관리부터 식단 설계까지</h1>
+                    <p class="text-emerald-100 text-sm md:text-base">우리 집에 가지고 있는 재료들을 기록해보세요. 낭비 없이 완벽하게 소비할 수 있도록 돕고, <br>이번 주 나의 완벽한 아침/점심/저녁 식단을 직접 계획하여 건강하고 기분 좋은 한 주를 완성합니다.</p>
+                    <div class="flex flex-wrap gap-3 pt-2">
+                        <button onclick="navigate('fridge')" class="bg-[#E76F51] hover:bg-[#d65f41] text-white px-6 py-3 rounded-xl font-bold text-sm flex items-center space-x-2 transition-all shadow-md">
+                            <i class="fa-solid fa-basket-shopping"></i>
+                            <span>식재료 등록하고 시작하기</span>
+                        </button>
+                        <button onclick="navigate('planner')" class="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-6 py-3 rounded-xl font-bold text-sm transition-all">
+                            주간 식단 직접 계획하기
+                        </button>
+                    </div>
+                </div>
+                <div class="absolute right-0 bottom-0 opacity-10 transform translate-x-10 translate-y-10">
+                    <i class="fa-solid fa-seedling text-[250px] text-white"></i>
+                </div>
+            </div>
+
+            <!-- 요약 지표 카드 그룹 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex items-center space-x-4">
+                    <div class="bg-emerald-50 text-emerald-600 p-4 rounded-xl">
+                        <i class="fa-solid fa-basket-shopping text-2xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400 font-medium uppercase">보관 중인 식재료</p>
+                        <p class="text-2xl font-black text-[#1B4332]" id="total-ingredients-wrapper">
+                            <span id="total-ingredients-count">0</span>종
+                        </p>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex items-center space-x-4">
+                    <div class="bg-amber-50 text-amber-600 p-4 rounded-xl">
+                        <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400 font-medium uppercase">유통기한 임박 (D-3 이내)</p>
+                        <p class="text-2xl font-black text-amber-600"><span id="expiring-soon-count">0</span>개</p>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex items-center space-x-4">
+                    <div class="bg-rose-50 text-[#E76F51] p-4 rounded-xl">
+                        <i class="fa-solid fa-face-smile text-2xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400 font-medium uppercase">이용자 평균 평점</p>
+                        <p class="text-2xl font-black text-[#E76F51]"><span id="dashboard-avg-rating">0.0</span> / 5.0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 주요 컨텐츠 분할 면 -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- ① 소비 권장 식재료 -->
+                <div class="lg:col-span-1 bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col h-[480px]">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold text-lg text-[#1B4332]"><i class="fa-solid fa-hourglass-half mr-2 text-[#E76F51]"></i>소비 권장 식재료</h3>
+                        <span class="text-xs text-slate-400 font-medium">유통기한 순</span>
+                    </div>
+                    <div class="flex-grow overflow-y-auto space-y-3 pr-2" id="expiring-list">
+                        <!-- JS로 동적 갱신 -->
+                    </div>
+                    <button onclick="navigate('planner')" class="w-full mt-4 bg-[#1B4332] hover:bg-[#122e22] text-white py-3 rounded-xl font-bold text-sm text-center transition-all">
+                        주간 식단 작성하러 가기
+                    </button>
+                </div>
+
+                <!-- ② 실시간 이용후기 퀵 피드 (최신 5개) -->
+                <div class="lg:col-span-2 bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col justify-between h-[480px]">
+                    <div class="flex items-center justify-between mb-4 border-b border-slate-50 pb-2">
+                        <h3 class="font-bold text-lg text-[#1B4332]"><i class="fa-solid fa-comments mr-2 text-[#E76F51]"></i>Today's Table 최신 후기 피드</h3>
+                        <span class="bg-emerald-50 text-emerald-700 text-xs px-2.5 py-1 rounded-lg font-bold">생생 리얼 피드백</span>
+                    </div>
+                    
+                    <div class="flex-grow overflow-y-auto space-y-3.5 pr-1" id="dashboard-reviews-feed">
+                        <!-- JS로 동적 연동 -->
+                    </div>
+
+                    <button onclick="navigate('reviews')" class="w-full mt-4 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl font-bold text-sm text-center transition-all">
+                        서비스 만족도 후기 남기러 가기
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. 나의 냉장고 탭 (INVENTORY) -->
+        <section id="tab-fridge" class="hidden space-y-6">
+            <!-- 비로그인 잠금 화면 -->
+            <div id="fridge-locked-overlay" class="hidden py-16 flex flex-col items-center justify-center text-center bg-white rounded-3xl border border-slate-100 shadow-sm space-y-4 max-w-2xl mx-auto my-12">
+                <div class="bg-rose-50 text-[#E76F51] p-5 rounded-full animate-bounce">
+                    <i class="fa-solid fa-lock text-3xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800">로그인이 필요한 기능입니다</h3>
+                <p class="text-xs text-slate-400 max-w-xs">보유 식재료의 개인 관리 및 자동 유통기한 체크를 위해 안전하게 가입 및 로그인 후 사용해 주세요.</p>
+                <button onclick="openAuthModal()" class="bg-[#1B4332] hover:bg-[#122e22] text-white px-6 py-2.5 rounded-xl font-bold text-xs transition-all shadow-md">
+                    로그인 / 회원가입 하러가기
+                </button>
+            </div>
+
+            <!-- 로그인 활성화 화면 -->
+            <div id="fridge-unlocked-content" class="space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl font-extrabold text-[#1B4332]">보관 식재료 관리</h2>
+                        <p class="text-sm text-slate-400">우리 집 냉장고에 있는 식품들을 직접 등록하고 기한을 관리하세요.</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="openAddIngredientModal()" class="w-full sm:w-auto bg-[#1B4332] hover:bg-[#122e22] text-white px-5 py-3 rounded-xl font-bold text-sm flex items-center justify-center space-x-1.5 transition-all shadow-md">
+                            <i class="fa-solid fa-plus text-sm"></i>
+                            <span>새 식재료 직접 입력하기</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 보관 필터 및 검색 바 -->
+                <div class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex space-x-2 overflow-x-auto pb-1 md:pb-0" id="filter-tabs">
+                        <button onclick="filterIngredients('ALL')" class="bg-[#1B4332] text-white text-xs font-bold px-4 py-2 rounded-lg whitespace-nowrap" id="filter-ALL">전체보기</button>
+                        <button onclick="filterIngredients('채소/과일')" class="bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-medium px-4 py-2 rounded-lg whitespace-nowrap" id="filter-채소/과일">채소/과일</button>
+                        <button onclick="filterIngredients('정육/계란')" class="bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-medium px-4 py-2 rounded-lg whitespace-nowrap" id="filter-정육/계란">정육/계란</button>
+                        <button onclick="filterIngredients('유제품')" class="bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-medium px-4 py-2 rounded-lg whitespace-nowrap" id="filter-유제품">유제품</button>
+                        <button onclick="filterIngredients('기타')" class="bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-medium px-4 py-2 rounded-lg whitespace-nowrap" id="filter-기타">기타/가공식품</button>
+                    </div>
+                    <div class="relative w-full md:w-72">
+                        <input type="text" id="search-input" onkeyup="searchIngredients()" placeholder="식재료 검색..." class="w-full bg-slate-50 text-xs border border-slate-200 rounded-xl px-10 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-slate-400 text-sm"></i>
+                    </div>
+                </div>
+
+                <!-- 식재료 리스트 보드 -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6" id="fridge-grid">
+                    <!-- JS 동적 렌더링 -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. 식단 플래너 탭 (WEEKLY PLANNER) -->
+        <section id="tab-planner" class="hidden space-y-6">
+            <!-- 비로그인 잠금 화면 -->
+            <div id="planner-locked-overlay" class="hidden py-16 flex flex-col items-center justify-center text-center bg-white rounded-3xl border border-slate-100 shadow-sm space-y-4 max-w-2xl mx-auto my-12">
+                <div class="bg-rose-50 text-[#E76F51] p-5 rounded-full animate-bounce">
+                    <i class="fa-solid fa-lock text-3xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800">로그인이 필요한 기능입니다</h3>
+                <p class="text-xs text-slate-400 max-w-xs">일주일 식단을 내 마음대로 계획하고 기록하기 위해 안전하게 회원가입 및 로그인 후 전용 플래너를 개설해 보세요.</p>
+                <button onclick="openAuthModal()" class="bg-[#1B4332] hover:bg-[#122e22] text-white px-6 py-2.5 rounded-xl font-bold text-xs transition-all shadow-md">
+                    로그인 / 회원가입 하러가기
+                </button>
+            </div>
+
+            <!-- 로그인 활성화 화면 -->
+            <div id="planner-unlocked-content" class="space-y-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl font-extrabold text-[#1B4332]">식단 메이커 &amp; 플래너</h2>
+                        <p class="text-sm text-slate-400">요일별 카드를 클릭하여 오늘의 아침, 점심, 저녁 식단 메뉴를 내 마음대로 직접 짜고 저장하세요!</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="resetPlannerToDefault()" class="bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center space-x-1">
+                            <i class="fa-solid fa-rotate-left"></i>
+                            <span>식단표 초기화</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 주간 달력 구조 -->
+                <div class="grid grid-cols-1 md:grid-cols-7 gap-4" id="weekly-calendar">
+                    <!-- 동적 7일 플래너 렌더링 -->
+                </div>
+
+                <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="space-y-1">
+                        <p class="font-bold text-[#1B4332] text-base"><i class="fa-solid fa-file-invoice mr-2 text-[#E76F51]"></i>주간 작성된 나의 식단 텍스트로 보관하기</p>
+                        <p class="text-xs text-slate-500">내가 짠 스마트 주간 식표 전체를 편리한 텍스트로 클립보드에 복사해 메모장이나 카카오톡에 저장해 두세요.</p>
+                    </div>
+                    <button onclick="exportPlannerList()" class="bg-[#1B4332] hover:bg-[#122e22] text-white px-5 py-3 rounded-xl font-bold text-xs whitespace-nowrap transition-all flex items-center space-x-1.5">
+                        <i class="fa-solid fa-copy"></i>
+                        <span>나의 커스텀 주간 식표 전체 복사</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. 이용자 후기 탭 (REALTIME REVIEWS & VOC) -->
+        <section id="tab-reviews" class="hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- ① 왼쪽: 리뷰 통계 및 후기 남기기 -->
+                <div class="lg:col-span-1 space-y-6">
+                    <!-- 종합 평점 카드 -->
+                    <div class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm text-center space-y-4">
+                        <h3 class="font-bold text-base text-slate-600">이용자 종합 평점</h3>
+                        <div class="space-y-1">
+                            <p class="text-5xl font-black text-[#1B4332]"><span id="review-avg-score">0.0</span><span class="text-lg text-slate-400"> / 5.0</span></p>
+                            <div class="flex justify-center text-amber-400 text-lg" id="stat-stars">
+                                <i class="fa-regular fa-star text-slate-300"></i>
+                                <i class="fa-regular fa-star text-slate-300"></i>
+                                <i class="fa-regular fa-star text-slate-300"></i>
+                                <i class="fa-regular fa-star text-slate-300"></i>
+                                <i class="fa-regular fa-star text-slate-300"></i>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-400">전체 <span id="review-total-count" class="font-bold text-[#E76F51]">0</span>명의 참여 의견 기준</p>
+                        
+                        <div class="space-y-2 pt-2 text-left" id="review-rating-distribution">
+                            <!-- JS를 통해 분포 비율 렌더링 -->
+                        </div>
+                    </div>
+
+                    <!-- 후기 작성 폼 (로그인 상태에 따라 분기) -->
+                    <div id="review-write-container">
+                        <!-- 로그인 유도 잠금 -->
+                        <div id="review-write-locked" class="hidden bg-[#1B4332] text-white rounded-2xl p-6 shadow-md text-center space-y-4">
+                            <div class="bg-emerald-900/40 text-emerald-300 p-4 rounded-full w-14 h-14 mx-auto flex items-center justify-center">
+                                <i class="fa-solid fa-lock text-xl"></i>
+                            </div>
+                            <h3 class="font-bold text-base">리뷰 작성 로그인 필요</h3>
+                            <p class="text-xs text-emerald-100/80 leading-relaxed">Today's Table 사용 후기를 등록하시려면 계정 연동 및 로그인이 필요합니다.</p>
+                            <button onclick="openAuthModal()" class="w-full bg-[#E76F51] hover:bg-[#d65f41] text-white py-2.5 rounded-xl font-bold text-xs transition-all shadow-md">
+                                로그인 하러가기
+                            </button>
+                        </div>
+
+                        <!-- 로그인 완료시 폼 활성화 -->
+                        <div id="review-write-unlocked" class="bg-[#1B4332] text-white rounded-2xl p-6 shadow-md space-y-4">
+                            <div class="space-y-1">
+                                <h3 class="font-bold text-base"><i class="fa-solid fa-pen-nib mr-2 text-emerald-400"></i>소중한 후기 남기기</h3>
+                                <p class="text-xs text-emerald-100/80">여러분의 피드백이 Today's Table을 더 유익하게 발전시킵니다.</p>
+                            </div>
+                            
+                            <div class="space-y-1">
+                                <label class="text-xs font-bold text-emerald-200">평점 선택</label>
+                                <div class="flex space-x-2 text-2xl text-amber-300 pt-1">
+                                    <button type="button" class="star-btn hover:scale-110 transition-transform" onclick="setReviewRating(1)"><i class="fa-solid fa-star" id="write-star-1"></i></button>
+                                    <button type="button" class="star-btn hover:scale-110 transition-transform" onclick="setReviewRating(2)"><i class="fa-solid fa-star" id="write-star-2"></i></button>
+                                    <button type="button" class="star-btn hover:scale-110 transition-transform" onclick="setReviewRating(3)"><i class="fa-solid fa-star" id="write-star-3"></i></button>
+                                    <button type="button" class="star-btn hover:scale-110 transition-transform" onclick="setReviewRating(4)"><i class="fa-solid fa-star" id="write-star-4"></i></button>
+                                    <button type="button" class="star-btn hover:scale-110 transition-transform" onclick="setReviewRating(5)"><i class="fa-solid fa-star" id="write-star-5"></i></button>
+                                </div>
+                            </div>
+
+                            <div class="space-y-1">
+                                <label class="text-xs font-bold text-emerald-200">닉네임</label>
+                                <input type="text" id="review-writer" placeholder="예: 맛있는집밥" class="w-full bg-emerald-900/50 border border-emerald-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-400 placeholder-emerald-400">
+                            </div>
+
+                            <div class="space-y-1">
+                                <label class="text-xs font-bold text-emerald-200">한줄 평 및 의견</label>
+                                <textarea id="review-content" rows="3" placeholder="앱 사용감, 좋은 점, 개선할 점을 자유롭게 적어주세요." class="w-full bg-emerald-900/50 border border-emerald-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-400 placeholder-emerald-400 resize-none"></textarea>
+                            </div>
+
+                            <button onclick="addNewReview()" class="w-full bg-[#E76F51] hover:bg-[#d65f41] text-white py-2.5 rounded-xl font-bold text-xs transition-all shadow-sm">
+                                후기 등록하기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ② 오른쪽: 실시간 리뷰 목록 -->
+                <div class="lg:col-span-2 bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col h-[580px]">
+                    <div class="flex items-center justify-between mb-4 border-b border-slate-50 pb-4">
+                        <h3 class="font-bold text-lg text-[#1B4332]"><i class="fa-solid fa-comments mr-2 text-[#E76F51]"></i>등록된 이용 후기 (<span id="review-list-count">0</span>)</h3>
+                        <span class="text-xs text-slate-400">최신순 정렬</span>
+                    </div>
+                    
+                    <div class="flex-grow overflow-y-auto space-y-4 pr-2" id="review-list-container">
+                        <!-- JS동적 렌더링 -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 푸터 -->
+    <footer class="bg-white border-t border-slate-100 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-400">
+            <div>
+                <span class="font-bold text-[#1B4332]">© 2026 Today's Table</span>. All rights reserved.
+            </div>
+            <div class="flex space-x-6">
+                <a href="javascript:void(0)" onclick="openTermsModal()" class="hover:underline">이용약관</a>
+                <a href="javascript:void(0)" onclick="openPrivacyModal()" class="hover:underline">개인정보처리방침</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ============================================ -->
+    <!-- MODALS & LAYER STRUCTURES -->
+    <!-- ============================================ -->
+
+    <!-- 1. 식재료 직접 수동 추가 모달 -->
+    <div id="add-ingredient-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl max-w-sm w-full overflow-hidden shadow-2xl">
+            <div class="p-6 bg-[#1B4332] text-white flex justify-between items-center">
+                <h3 class="font-bold text-base"><i class="fa-solid fa-plus mr-2 text-emerald-400"></i>새 식재료 직접 등록</h3>
+                <button onclick="closeAddIngredientModal()" class="text-white hover:text-slate-200"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-600">식재료 명칭</label>
+                    <input type="text" id="add-name" placeholder="예: 양파, 닭가슴살, 계란" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-600">분류</label>
+                    <select id="add-category" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none">
+                        <option value="채소/과일">채소/과일</option>
+                        <option value="정육/계란">정육/계란</option>
+                        <option value="유제품">유제품</option>
+                        <option value="기타">기타/가공식품</option>
+                    </select>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-600">유통 및 소비 보존 기한</label>
+                    <input type="date" id="add-expiry" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none">
+                </div>
+                <button onclick="addNewIngredient()" class="w-full bg-[#1B4332] hover:bg-[#122e22] text-white py-3 rounded-xl font-bold text-xs transition-all">
+                    내 보관함에 등록 완료
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. 식단 편집 전용 팝업 모달 -->
+    <div id="edit-meal-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl">
+            <div class="p-6 bg-[#1B4332] text-white flex justify-between items-center">
+                <h3 class="font-bold text-base"><i class="fa-solid fa-pen-to-square mr-2 text-emerald-400"></i><span id="edit-meal-day-title">월요일</span> 식단 직접 정하기</h3>
+                <button onclick="closeEditMealModal()" class="text-white hover:text-slate-200"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <p class="text-xs text-slate-400">오늘 드실 나만의 맞춤 식단을 직접 자유롭게 기입해 보세요.</p>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-[#E76F51]">아침 식단</label>
+                    <input type="text" id="edit-breakfast" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500" placeholder="아침 메뉴 입력">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-[#E76F51]">점심 식단</label>
+                    <input type="text" id="edit-lunch" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500" placeholder="점심 메뉴 입력">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-[#E76F51]">저녁 식단</label>
+                    <input type="text" id="edit-dinner" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500" placeholder="저녁 메뉴 입력">
+                </div>
+                <input type="hidden" id="edit-meal-index">
+                <div class="flex space-x-2 pt-2">
+                    <button onclick="closeEditMealModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-3 rounded-xl font-bold text-xs transition-all">취소</button>
+                    <button onclick="saveCustomMeal()" class="flex-1 bg-[#1B4332] hover:bg-[#122e22] text-white py-3 rounded-xl font-bold text-xs transition-all">식단 저장</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. 회원가입 및 로그인 모달 -->
+    <div id="auth-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl max-w-sm w-full overflow-hidden shadow-2xl">
+            <div class="p-6 bg-[#1B4332] text-white flex justify-between items-center">
+                <h3 class="font-bold text-base" id="auth-modal-title"><i class="fa-solid fa-user-lock mr-2 text-emerald-400"></i>로그인</h3>
+                <button onclick="closeAuthModal()" class="text-white hover:text-slate-200"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <!-- 구글 간편 로그인 -->
+                <button onclick="handleGoogleLogin()" class="w-full bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 py-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center space-x-2 shadow-sm">
+                    <i class="fa-brands fa-google text-red-500 text-sm"></i>
+                    <span>구글 계정으로 간편로그인</span>
+                </button>
+
+                <div class="relative flex py-1 items-center">
+                    <div class="flex-grow border-t border-slate-200"></div>
+                    <span class="flex-shrink mx-4 text-slate-400 text-[10px]">또는 일반 이메일계정</span>
+                    <div class="flex-grow border-t border-slate-200"></div>
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-600">이메일 주소</label>
+                    <input type="email" id="auth-email" placeholder="example@email.com" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-600">비밀번호</label>
+                    <input type="password" id="auth-password" placeholder="6자리 이상 입력" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                </div>
+                
+                <button id="auth-submit-btn" onclick="handleAuthSubmit()" class="w-full bg-[#1B4332] hover:bg-[#122e22] text-white py-3 rounded-xl font-bold text-xs transition-all">
+                    로그인 하기
+                </button>
+
+                <div class="text-center pt-1">
+                    <button id="auth-toggle-btn" onclick="toggleAuthMode()" class="text-[11px] text-slate-400 font-medium hover:underline">
+                        아직 회원이 아니신가요? <span class="text-[#E76F51] font-bold">회원가입</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. 이용후기 편집 전용 모달 -->
+    <div id="edit-review-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl max-w-sm w-full overflow-hidden shadow-2xl animate-toast">
+            <div class="p-6 bg-[#1B4332] text-white flex justify-between items-center">
+                <h3 class="font-bold text-base"><i class="fa-solid fa-pen-to-square mr-2 text-emerald-400"></i>나의 후기 수정</h3>
+                <button onclick="closeEditReviewModal()" class="text-white hover:text-slate-200"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-600">평점 수정</label>
+                    <div class="flex space-x-2 text-2xl text-amber-300 pt-1" id="edit-review-stars-container">
+                        <!-- JS로 동적 별점 조절 버튼 구성 -->
+                    </div>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-600">한줄 평 및 의견 수정</label>
+                    <textarea id="edit-review-content-input" rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none"></textarea>
+                </div>
+                <input type="hidden" id="edit-review-id-hidden">
+                <div class="flex space-x-2 pt-1">
+                    <button onclick="closeEditReviewModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-3 rounded-xl font-bold text-xs transition-all">취소</button>
+                    <button onclick="submitEditReview()" class="flex-1 bg-[#1B4332] hover:bg-[#122e22] text-white py-3 rounded-xl font-bold text-xs transition-all">수정 완료</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. 커스텀 컨펌 모달 (중복 이벤트 철벽 차단 및 단독형 버튼 연결 완료) -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl max-w-xs w-full overflow-hidden shadow-2xl p-6 text-center space-y-4 animate-toast">
+            <div class="bg-rose-50 text-[#E76F51] p-4 rounded-full w-14 h-14 mx-auto flex items-center justify-center">
+                <i class="fa-solid fa-triangle-exclamation text-xl animate-pulse"></i>
+            </div>
+            <h3 class="font-bold text-slate-800 text-base" id="confirm-title">정말 실행하시겠습니까?</h3>
+            <p class="text-xs text-slate-400" id="confirm-message">이 작업은 다시 되돌릴 수 없습니다.</p>
+            <div class="flex space-x-2 pt-2">
+                <button onclick="closeConfirmModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-2.5 rounded-xl font-bold text-xs transition-all">취소</button>
+                <button id="confirm-action-btn" onclick="handleConfirmAction()" class="flex-1 bg-[#E76F51] hover:bg-[#d65f41] text-white py-2.5 rounded-xl font-bold text-xs transition-all">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. 이용약관 모달 -->
+    <div id="terms-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col max-h-[85vh] animate-toast">
+            <div class="p-6 bg-[#1B4332] text-white flex justify-between items-center">
+                <h3 class="font-bold text-base"><i class="fa-solid fa-file-contract mr-2 text-emerald-400"></i>이용약관</h3>
+                <button onclick="closeTermsModal()" class="text-white hover:text-slate-200"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto space-y-4 text-xs text-slate-600 leading-relaxed">
+                <h4 class="font-bold text-sm text-slate-800">제 1 조 (목적)</h4>
+                <p>본 약관은 "Today's Table"이 제공하는 인터넷 서비스 및 웹 기반 스마트 식단 관리 시스템(이하 "서비스")의 이용에 있어 회사와 이용자의 권리, 의무 및 책임 사항을 규정함을 목적으로 합니다.</p>
+                <h4 class="font-bold text-sm text-slate-800">제 2 조 (용어의 정의)</h4>
+                <p>1. "이용자"란 본 사이트에 접속하여 본 약관에 따라 서비스를 제공받는 회원 및 비회원을 의미합니다.<br>2. "회원"이라 함은 구글 계정 또는 자체 이메일을 통해 계정을 연동 및 로그인하여 본인만의 냉장고 인벤토리 및 식단 작성 공간을 사용하는 주체를 말합니다.</p>
+                <h4 class="font-bold text-sm text-slate-800">제 3 조 (서비스의 제공 및 이용)</h4>
+                <p>1. 서비스는 연중무휴 24시간 가동을 원칙으로 하며, 구글 파이어베이스 클라우드 데이터베이스 인프라를 기반으로 실시간 제공됩니다.<br>2. 식습관 플래너 및 냉장고 등록 데이터는 회원의 고유 UID 식별자에 속하여 안전하게 보관됩니다. 비로그인 유저가 작성하는 후기 등 일부 기능은 영구 보존이 제한될 수 있습니다.</p>
+                <h4 class="font-bold text-sm text-slate-800">제 4 조 (이용자의 책임)</h4>
+                <p>이용자는 본인의 구글 로그인 정보 및 계정을 타인에게 양도하거나 분실해선 안 되며, 서비스 이용 중 허위 정보의 유포, 시스템 공격, 비방을 목적으로 하는 허위 리뷰 게시 등의 행위를 일체 금지합니다.</p>
+            </div>
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+                <button onclick="closeTermsModal()" class="bg-[#1B4332] hover:bg-[#122e22] text-white px-5 py-2 rounded-xl font-bold text-xs transition-all">닫기 및 동의</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7. 개인정보처리방침 모달 -->
+    <div id="privacy-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col max-h-[85vh] animate-toast">
+            <div class="p-6 bg-[#1B4332] text-white flex justify-between items-center">
+                <h3 class="font-bold text-base"><i class="fa-solid fa-shield-halved mr-2 text-emerald-400"></i>개인정보처리방침</h3>
+                <button onclick="closePrivacyModal()" class="text-white hover:text-slate-200"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto space-y-4 text-xs text-slate-600 leading-relaxed">
+                <h4 class="font-bold text-sm text-slate-800">1. 수집하는 개인정보 항목</h4>
+                <p>본 서비스는 회원식별 및 동기화 서비스를 원활히 가동하기 위해 아래와 같은 개인정보를 연동 수집합니다.<br>- <strong>필수 수집 항목</strong>: 이메일 주소, 로그인 고유식별 번호(UID), 프로필 이미지 주소(구글 연동 로그인 시 한정).</p>
+                <h4 class="font-bold text-sm text-slate-800">2. 개인정보의 수집 및 이용 목적</h4>
+                <p>수집된 개인정보는 타인과 섞이지 않는 안전한 개별 냉장고 식재료 보관함 보존, 식단 메이커 기록 연동, 평점 및 한줄평 등록 작성자 신원 구분 목적으로만 한정하여 활용됩니다.</p>
+                <h4 class="font-bold text-sm text-slate-800">3. 개인정보의 보유 및 파기 절차</h4>
+                <p>사용자 정보는 구글 파이어베이스 클라우드의 전 세계 안전 인프라 데이터 서버에 수집 및 암호화 보존됩니다. 사용자가 서비스 로그아웃을 하거나, 계정을 연동 해제 및 데이터베이스 수동 삭제 요청 시 즉각 데이터가 안전하게 완전 파괴됩니다.</p>
+                <h4 class="font-bold text-sm text-slate-800">4. 제3자 제공 및 위탁 공지</h4>
+                <p>Today's Talbe은 마케팅이나 제3자 판매 목적으로 귀하의 개인 정보를 일체 외부로 이전, 판매, 대여하지 않으며, 구글 파이어베이스(Firebase Auth &amp; Realtime DB) 인증 인프라 관리 위탁 처리 외에 타 목적 공유는 전혀 시행되지 않습니다.</p>
+            </div>
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+                <button onclick="closePrivacyModal()" class="bg-[#1B4332] hover:bg-[#122e22] text-white px-5 py-2 rounded-xl font-bold text-xs transition-all">확인 완료</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 커스텀 토스트 알림 컨테이너 -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-3 pointer-events-none"></div>
+
+    <!-- ============================================ -->
+    <!-- JAVASCRIPT ENGINE (Firebase & Cache Sync) -->
+    <!-- ============================================ -->
+    <script>
+        // ============================================
+        // ⚠️ [중요!] 파이어베이스 클라우드 연결 설정 구역
+        // ============================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyCoPSKkTRd4Mv4B4BIHkPtUakYgIIsqz2U",         
+            authDomain: "todays-table-46bcb.firebaseapp.com",     
+            databaseURL: "https://todays-table-46bcb-default-rtdb.firebaseio.com",    
+            projectId: "todays-table-46bcb"       
+        };
+
+        // Firebase 연동 상태 플래그
+        let isFirebaseConnected = false;
+        let currentUser = null;
+
+        // Firebase 활성 데이터베이스 참조 저장 (동기화 중복 파괴 수호)
+        let activeIngredientsRef = null;
+        let activePlannerRef = null;
+
+        // Firebase 초기화 검사 및 연동
+        if (firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.databaseURL && firebaseConfig.projectId) {
+            try {
+                firebase.initializeApp(firebaseConfig);
+                isFirebaseConnected = true;
+                console.log("Firebase 연동 성공!");
+            } catch (e) {
+                console.error("Firebase 초기화 에러:", e);
+            }
+        }
+
+        // 기본 텅 빈 식단 구조
+        const defaultPlanner = [
+            { day: "월요일", breakfast: "", lunch: "", dinner: "" },
+            { day: "화요일", breakfast: "", lunch: "", dinner: "" },
+            { day: "수요일", breakfast: "", lunch: "", dinner: "" },
+            { day: "목요일", breakfast: "", lunch: "", dinner: "" },
+            { day: "금요일", breakfast: "", lunch: "", dinner: "" },
+            { day: "토요일", breakfast: "", lunch: "", dinner: "" },
+            { day: "일요일", breakfast: "", lunch: "", dinner: "" }
+        ];
+
+        const defaultReviews = [];
+        const defaultIngredients = [];
+
+        // 메인 애플리케이션 상태 (State)
+        let state = {
+            ingredients: [],
+            currentFilter: "ALL",
+            weeklyPlanner: [],
+            reviews: [],
+            currentWriteRating: 5,
+            currentTab: "dashboard"
+        };
+
+        // 로컬 데이터 갱신 시간 추적 (Firebase 리스너 충돌 방지)
+        let lastLocalIngredientsUpdate = 0;
+        let lastLocalPlannerUpdate = 0;
+
+        // 파이어베이스 인덱스 구멍 및 null/undefined 잔상을 완전 소멸시키는 무결성 정제 함수
+        function ensureArray(data) {
+            if (!data) return [];
+            if (Array.isArray(data)) {
+                return data.filter(item => item !== null && item !== undefined);
+            }
+            if (typeof data === 'object') {
+                return Object.values(data).filter(item => item !== null && item !== undefined);
+            }
+            return [];
+        }
+
+        // 식재료 객체 형태 무결성 보정 필터
+        function cleanIngredientsArray(arr) {
+            return ensureArray(arr).filter(item => item && typeof item === 'object' && item.id && item.name);
+        }
+
+        // 로컬 캐시 초기화
+        function initLocalState() {
+            const localReviews = localStorage.getItem('todays_table_reviews');
+            state.reviews = ensureArray(localReviews ? JSON.parse(localReviews) : [...defaultReviews]);
+
+            const localIngredients = localStorage.getItem('todays_table_ingredients');
+            state.ingredients = cleanIngredientsArray(localIngredients ? JSON.parse(localIngredients) : [...defaultIngredients]);
+
+            const localPlanner = localStorage.getItem('todays_table_planner');
+            state.weeklyPlanner = ensureArray(localPlanner ? JSON.parse(localPlanner) : JSON.parse(JSON.stringify(defaultPlanner)));
+            if (state.weeklyPlanner.length === 0) {
+                state.weeklyPlanner = JSON.parse(JSON.stringify(defaultPlanner));
+            }
+
+            const localTab = localStorage.getItem('todays_table_tab');
+            state.currentTab = localTab || 'dashboard';
+        }
+
+        // 브라우저 캐싱 저장
+        function saveLocal(key) {
+            if (key === 'reviews') {
+                localStorage.setItem('todays_table_reviews', JSON.stringify(state.reviews));
+            } else if (key === 'ingredients') {
+                localStorage.setItem('todays_table_ingredients', JSON.stringify(state.ingredients));
+            } else if (key === 'planner') {
+                localStorage.setItem('todays_table_planner', JSON.stringify(state.weeklyPlanner));
+            }
+        }
+
+        // 리스너 누적 중복 파괴 (가장 안전한 실무 동기화 장치)
+        function unsubscribeFirebaseListeners() {
+            if (activeIngredientsRef) {
+                activeIngredientsRef.off();
+                activeIngredientsRef = null;
+            }
+            if (activePlannerRef) {
+                activePlannerRef.off();
+                activePlannerRef = null;
+            }
+        }
+
+        // Firebase 실시간 동기화
+        function setupFirebaseSync() {
+            if (!isFirebaseConnected) return;
+
+            // 실시간 글로벌 후기 리스너 가동
+            firebase.database().ref('reviews').on('value', (snapshot) => {
+                const data = snapshot.val();
+                state.reviews = ensureArray(data);
+                saveLocal('reviews');
+                renderReviews();
+                renderDashboard();
+            });
+
+            // 사용자 로그인 상태 감시 리스너
+            firebase.auth().onAuthStateChanged((user) => {
+                if (user) {
+                    currentUser = user;
+                    const displayName = user.displayName || user.email.split('@')[0];
+                    document.getElementById('auth-btn').innerText = `${displayName} (로그아웃)`;
+                    document.getElementById('auth-btn').setAttribute('onclick', 'handleLogout()');
+                    showToast(`${displayName}님, 환영합니다!`);
+
+                    syncUserDataFromCloud(user.uid);
+                    
+                    // 로그인 완료 후 현재 탭 자동 업데이트
+                    setTimeout(() => {
+                        navigate(state.currentTab);
+                    }, 800);
+                } else {
+                    currentUser = null;
+                    document.getElementById('auth-btn').innerText = "로그인 / 회원가입";
+                    document.getElementById('auth-btn').setAttribute('onclick', 'openAuthModal()');
+                    
+                    // 로그아웃 시 캐시를 전면 날려 타인 데이터 노출 원천 차단
+                    localStorage.removeItem('todays_table_ingredients');
+                    localStorage.removeItem('todays_table_planner');
+                    
+                    unsubscribeFirebaseListeners();
+                    initLocalState();
+                    navigate(state.currentTab);
+                }
+            });
+        }
+
+        // 사용자 데이터 클라우드 동기화 및 안전 세션 분리
+        function syncUserDataFromCloud(uid) {
+            // 기존 채널 완벽 분리
+            unsubscribeFirebaseListeners();
+
+            activeIngredientsRef = firebase.database().ref(`users/${uid}/ingredients`);
+            activePlannerRef = firebase.database().ref(`users/${uid}/weeklyPlanner`);
+
+            // 1. 개인 식재료 로드
+            activeIngredientsRef.once('value').then((snapshot) => {
+                const data = snapshot.val();
+                state.ingredients = cleanIngredientsArray(data);
+                saveLocal('ingredients');
+                renderFridge();
+                renderDashboard();
+
+                activeIngredientsRef.on('value', (snap) => {
+                    if (currentUser && currentUser.uid === uid) {
+                        const realData = snap.val();
+                        const now = Date.now();
+                        
+                        // 최근 2초 내에 로컬에서 업데이트했으면 무시 (로컬 변경이 우선)
+                        if (now - lastLocalIngredientsUpdate > 2000) {
+                            state.ingredients = cleanIngredientsArray(realData);
+                            saveLocal('ingredients');
+                            renderFridge();
+                            renderDashboard();
+                        }
+                    }
+                });
+            });
+
+            // 2. 개인 식단표 로드
+            activePlannerRef.once('value').then((snapshot) => {
+                const data = snapshot.val();
+                state.weeklyPlanner = ensureArray(data);
+                if (state.weeklyPlanner.length === 0) {
+                    state.weeklyPlanner = JSON.parse(JSON.stringify(defaultPlanner));
+                }
+                saveLocal('planner');
+                renderPlanner();
+
+                activePlannerRef.on('value', (snap) => {
+                    if (currentUser && currentUser.uid === uid) {
+                        const realData = snap.val();
+                        const now = Date.now();
+                        
+                        // 최근 2초 내에 로컬에서 업데이트했으면 무시 (로컬 변경이 우선)
+                        if (now - lastLocalPlannerUpdate > 2000) {
+                            state.weeklyPlanner = ensureArray(realData);
+                            if (state.weeklyPlanner.length === 0) {
+                                state.weeklyPlanner = JSON.parse(JSON.stringify(defaultPlanner));
+                            }
+                            saveLocal('planner');
+                            renderPlanner();
+                        }
+                    }
+                });
+            }).catch(() => {
+                console.error("데이터 동기화 실패");
+            });
+        }
+
+        // 통신 지연 보상 및 구글 보안 에러 철벽 예방 엔진
+        function persistData(type) {
+            saveLocal(type);
+            
+            // 로컬 업데이트 시간 기록 (Firebase 리스너의 덮어쓰기 방지)
+            const now = Date.now();
+            if (type === 'ingredients') {
+                lastLocalIngredientsUpdate = now;
+            } else if (type === 'planner') {
+                lastLocalPlannerUpdate = now;
+            }
+
+            if (isFirebaseConnected && currentUser) {
+                try {
+                    const uid = currentUser.uid;
+                    let promise;
+                    if (type === 'ingredients') {
+                        promise = firebase.database().ref(`users/${uid}/ingredients`).set(state.ingredients);
+                    } else if (type === 'planner') {
+                        promise = firebase.database().ref(`users/${uid}/weeklyPlanner`).set(state.weeklyPlanner);
+                    }
+
+                    if (promise) {
+                        promise.catch(err => {
+                            console.error("클라우드 저장 실패:", err);
+                            // 로컬 브라우저에는 안전히 저장됨 (콘솔에만 기록)
+                        });
+                    }
+                } catch (e) {
+                    console.error("Firebase 통신 에러:", e);
+                    showToast("통신 동기화 중 에러가 발생했습니다. 우선 브라우저에 안전히 임시 저장되었습니다.", "info");
+                }
+            }
+        }
+
+        // 날짜 도우미
+        function getOffsetDate(daysOffset) {
+            const date = new Date();
+            date.setDate(date.getDate() + daysOffset);
+            return date.toISOString().split('T')[0];
+        }
+
+        // 유통기한 D-Day 계산기
+        function calculateDDay(expiryString) {
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            const expiry = new Date(expiryString);
+            expiry.setHours(0,0,0,0);
+            const diffTime = expiry - today;
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        }
+
+        // 커스텀 토스트 알리미
+        function showToast(message, type = "success") {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `animate-toast flex items-center space-x-2 bg-white border border-slate-150 px-5 py-3.5 rounded-2xl shadow-xl max-w-sm pointer-events-auto transition-all`;
+            
+            let iconColor = "text-emerald-500";
+            let iconHtml = '<i class="fa-solid fa-circle-check"></i>';
+            
+            if (type === "error") {
+                iconColor = "text-rose-500";
+                iconHtml = '<i class="fa-solid fa-circle-exclamation"></i>';
+            } else if (type === "info") {
+                iconColor = "text-blue-500";
+                iconHtml = '<i class="fa-solid fa-circle-info"></i>';
+            }
+
+            toast.innerHTML = `
+                <span class="${iconColor} text-base">${iconHtml}</span>
+                <span class="text-xs font-bold text-slate-700 leading-normal">${message}</span>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => { toast.remove(); }, 300);
+            }, 3500);
+        }
+
+        // 커스텀 다이얼로그 매니저 (실시간 충돌 완벽 방지형 독립 onclick 콜백 바인딩 구조)
+        let currentConfirmCallback = null;
+
+        function showCustomConfirm(title, message, callback) {
+            document.getElementById('confirm-title').innerText = title;
+            document.getElementById('confirm-message').innerText = message;
+            currentConfirmCallback = callback;
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        function handleConfirmAction() {
+            if (typeof currentConfirmCallback === 'function') {
+                try {
+                    currentConfirmCallback();
+                } catch (e) {
+                    console.error("확인 동작 실행 중 오류:", e);
+                }
+            }
+            closeConfirmModal();
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirm-modal').classList.add('hidden');
+            currentConfirmCallback = null;
+        }
+
+        // 약관 & 방침 모달 제어 함수
+        function openTermsModal() {
+            document.getElementById('terms-modal').classList.remove('hidden');
+        }
+        function closeTermsModal() {
+            document.getElementById('terms-modal').classList.add('hidden');
+        }
+        function openPrivacyModal() {
+            document.getElementById('privacy-modal').classList.remove('hidden');
+        }
+        function closePrivacyModal() {
+            document.getElementById('privacy-modal').classList.add('hidden');
+        }
+
+        // 탭 라우터 매니저
+        function navigate(tabId) {
+            document.getElementById('tab-dashboard').classList.add('hidden');
+            document.getElementById('tab-fridge').classList.add('hidden');
+            document.getElementById('tab-planner').classList.add('hidden');
+            document.getElementById('tab-reviews').classList.add('hidden');
+
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+
+            state.currentTab = tabId;
+            localStorage.setItem('todays_table_tab', tabId);
+
+            const links = document.querySelectorAll('.nav-link');
+            links.forEach(link => {
+                link.classList.remove('text-white', 'font-bold', 'border-b-2', 'border-[#E76F51]', 'pb-1');
+                link.classList.add('text-emerald-100');
+            });
+            const activeLink = document.getElementById(`nav-${tabId}`);
+            if(activeLink) {
+                activeLink.classList.remove('text-emerald-100');
+                activeLink.classList.add('text-white', 'font-bold', 'border-b-2', 'border-[#E76F51]', 'pb-1');
+            }
+
+            // 각 탭별 인가 권한 가드 적용
+            if (tabId === 'dashboard') {
+                renderDashboard();
+            } else if (tabId === 'fridge') {
+                const lockedView = document.getElementById('fridge-locked-overlay');
+                const unlockedView = document.getElementById('fridge-unlocked-content');
+                
+                // currentUser가 없어도 localStorage에 로그인 기록이 있으면 콘텐츠 표시
+                const hasLoginHistory = localStorage.getItem('todays_table_ingredients') !== null;
+                
+                if (!currentUser && !hasLoginHistory) {
+                    lockedView.classList.remove('hidden');
+                    unlockedView.classList.add('hidden');
+                } else {
+                    lockedView.classList.add('hidden');
+                    unlockedView.classList.remove('hidden');
+                    renderFridge();
+                }
+            } else if (tabId === 'planner') {
+                const lockedView = document.getElementById('planner-locked-overlay');
+                const unlockedView = document.getElementById('planner-unlocked-content');
+                
+                // currentUser가 없어도 localStorage에 로그인 기록이 있으면 콘텐츠 표시
+                const hasLoginHistory = localStorage.getItem('todays_table_planner') !== null;
+                
+                if (!currentUser && !hasLoginHistory) {
+                    lockedView.classList.remove('hidden');
+                    unlockedView.classList.add('hidden');
+                } else {
+                    lockedView.classList.add('hidden');
+                    unlockedView.classList.remove('hidden');
+                    renderPlanner();
+                }
+            } else if (tabId === 'reviews') {
+                const lockedForm = document.getElementById('review-write-locked');
+                const unlockedForm = document.getElementById('review-write-unlocked');
+                if (!currentUser) {
+                    lockedForm.classList.remove('hidden');
+                    unlockedForm.classList.add('hidden');
+                } else {
+                    lockedForm.classList.add('hidden');
+                    unlockedForm.classList.remove('hidden');
+                }
+                renderReviews();
+            }
+        }
+
+        // 1. 대시보드 렌더링
+        function renderDashboard() {
+            const expiringListContainer = document.getElementById('expiring-list');
+            expiringListContainer.innerHTML = '';
+
+            if (!currentUser) {
+                document.getElementById('total-ingredients-wrapper').innerHTML = `<span class="text-xs font-bold text-slate-400">로그인 필요</span>`;
+                document.getElementById('expiring-soon-count').innerText = "0";
+                
+                expiringListContainer.innerHTML = `
+                    <div class="h-full flex flex-col items-center justify-center text-center p-6 text-slate-300">
+                        <i class="fa-solid fa-lock text-3xl mb-2 text-[#E76F51]"></i>
+                        <p class="text-xs font-bold text-slate-600">로그인 후 확인 가능합니다</p>
+                        <p class="text-[10px] mt-1">개인 식재료 관리와 기한 알림은 계정 연동 후 활성화됩니다.</p>
+                    </div>`;
+            } else {
+                const sorted = [...state.ingredients].map(item => ({
+                    ...item,
+                    dDay: calculateDDay(item.expiry)
+                })).sort((a,b) => a.dDay - b.dDay);
+
+                const expiringSoon = sorted.filter(item => item.dDay <= 3);
+
+                document.getElementById('total-ingredients-wrapper').innerHTML = `<span id="total-ingredients-count">${state.ingredients.length}</span>종`;
+                document.getElementById('expiring-soon-count').innerText = expiringSoon.length;
+
+                if (expiringSoon.length === 0) {
+                    expiringListContainer.innerHTML = `
+                        <div class="h-full flex flex-col items-center justify-center text-center p-6 text-slate-300">
+                            <i class="fa-solid fa-circle-check text-4xl mb-2 text-emerald-500"></i>
+                            <p class="text-xs font-bold text-slate-600">유통기한 마감 재료가 없어요!</p>
+                            <p class="text-[10px]">매우 건강하고 계획적인 냉장고 상태입니다.</p>
+                        </div>`;
+                } else {
+                    expiringSoon.forEach(item => {
+                        let badgeColor = "bg-rose-100 text-[#E76F51]";
+                        if(item.dDay === 3) badgeColor = "bg-amber-100 text-amber-700";
+
+                        const dDayText = item.dDay === 0 ? "D-Day" : item.dDay < 0 ? `기한 만료 (D+${Math.abs(item.dDay)})` : `D-${item.dDay}`;
+
+                        expiringListContainer.innerHTML += `
+                            <div class="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-100 rounded-xl">
+                                <div class="flex items-center space-x-3">
+                                    <span class="w-2.5 h-2.5 rounded-full ${item.dDay <= 1 ? 'bg-[#E76F51]' : 'bg-amber-500'}"></span>
+                                    <div>
+                                        <h4 class="font-bold text-sm text-slate-800">${item.name}</h4>
+                                        <span class="text-[10px] text-slate-400">구분: ${item.category}</span>
+                                    </div>
+                                </div>
+                                <span class="text-[11px] font-black px-2.5 py-1 rounded-lg ${badgeColor}">${dDayText}</span>
+                            </div>`;
+                    });
+                }
+            }
+
+            const avg = calculateAverageRating();
+            document.getElementById('dashboard-avg-rating').innerText = avg;
+
+            // 대시보드 리얼 최신 후기 피드 노출
+            const feedContainer = document.getElementById('dashboard-reviews-feed');
+            feedContainer.innerHTML = '';
+
+            const feedReviews = [...state.reviews].sort((a, b) => {
+                const idA = String(a.id || '');
+                const idB = String(b.id || '');
+                return idB.localeCompare(idA);
+            }).slice(0, 5);
+
+            if (feedReviews.length === 0) {
+                feedContainer.innerHTML = `
+                    <div class="h-full flex flex-col items-center justify-center text-center p-6 text-slate-300">
+                        <i class="fa-regular fa-comment-dots text-3xl mb-2 text-slate-300"></i>
+                        <p class="text-xs">등록된 한줄평이 아직 없습니다.</p>
+                    </div>`;
+            } else {
+                feedReviews.forEach(rev => {
+                    let starsHtml = '';
+                    for (let i = 1; i <= 5; i++) {
+                        starsHtml += `<i class="fa-solid fa-star text-xs ${i <= rev.rating ? 'text-amber-400' : 'text-slate-100'}"></i>`;
+                    }
+                    feedContainer.innerHTML += `
+                        <div class="p-2.5 bg-slate-50 border border-slate-100 rounded-xl space-y-1">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[11px] font-bold text-slate-700">${rev.name}</span>
+                                <div class="flex space-x-0.5">${starsHtml}</div>
+                            </div>
+                            <p class="text-[11px] text-slate-500 line-clamp-1 leading-normal">${rev.content}</p>
+                        </div>`;
+                });
+            }
+        }
+
+        // 2. 냉장고 식재료 렌더링 (모바일 상시 노출 휴지통 아이콘 탑재)
+        function renderFridge() {
+            const grid = document.getElementById('fridge-grid');
+            grid.innerHTML = '';
+
+            const searchKeyword = document.getElementById('search-input').value.toLowerCase();
+            const filtered = state.ingredients.filter(item => {
+                if (!item) return false;
+                const categoryMatch = state.currentFilter === 'ALL' || item.category === state.currentFilter;
+                const searchMatch = item.name.toLowerCase().includes(searchKeyword);
+                return categoryMatch && searchMatch;
+            });
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full py-16 text-center text-slate-400">
+                        <i class="fa-regular fa-folder-open text-4xl mb-2"></i>
+                        <p class="text-xs">보관 중인 식재료가 없습니다. 새 식재료를 등록해보세요!</p>
+                    </div>`;
+                return;
+            }
+
+            filtered.forEach(item => {
+                const dDay = calculateDDay(item.expiry);
+                let badgeClass = "bg-emerald-100 text-emerald-800";
+                if (dDay <= 1) {
+                    badgeClass = "bg-rose-100 text-[#E76F51]";
+                } else if (dDay <= 3) {
+                    badgeClass = "bg-amber-100 text-amber-800";
+                }
+
+                const dDayText = dDay === 0 ? "D-Day" : dDay < 0 ? `만료 (D+${Math.abs(dDay)})` : `D-${dDay}`;
+
+                grid.innerHTML += `
+                    <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-all relative">
+                        <!-- 모바일에서도 확실히 터치 삭제 가능한 상시 활성화 휴지통 버튼 -->
+                        <button onclick="removeIngredient('${item.id}')" class="absolute top-3 right-3 text-slate-300 hover:text-rose-500 transition-colors z-10">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                        
+                        <div class="space-y-3">
+                            <div class="w-10 h-10 rounded-xl bg-[#F4F7F5] flex items-center justify-center text-lg text-[#1B4332]">
+                                ${getCategoryIcon(item.category)}
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-sm">${item.name}</h4>
+                                <p class="text-[10px] text-slate-400">기한: ${item.expiry}</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between">
+                            <span class="text-[9px] text-slate-300">${item.category}</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-md ${badgeClass}">${dDayText}</span>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        function getCategoryIcon(category) {
+            switch(category) {
+                case '채소/과일': return '<i class="fa-solid fa-carrot text-orange-500"></i>';
+                case '정육/계란': return '<i class="fa-solid fa-bacon text-[#E76F51]"></i>';
+                case '유제품': return '<i class="fa-solid fa-cheese text-amber-500"></i>';
+                default: return '<i class="fa-solid fa-seedling text-emerald-600"></i>';
+            }
+        }
+
+        function filterIngredients(category) {
+            state.currentFilter = category;
+            
+            const tabs = document.querySelectorAll('#filter-tabs button');
+            tabs.forEach(tab => {
+                tab.classList.remove('bg-[#1B4332]', 'text-white', 'font-bold');
+                tab.classList.add('bg-slate-50', 'text-slate-600', 'font-medium');
+            });
+
+            const activeTab = document.getElementById(`filter-${category}`);
+            if (activeTab) {
+                activeTab.classList.remove('bg-slate-50', 'text-slate-600', 'font-medium');
+                activeTab.classList.add('bg-[#1B4332]', 'text-white', 'font-bold');
+            }
+
+            renderFridge();
+        }
+
+        function searchIngredients() {
+            renderFridge();
+        }
+
+        function openAddIngredientModal() {
+            if (!currentUser) {
+                showToast("로그인이 필요합니다.", "error");
+                openAuthModal();
+                return;
+            }
+            document.getElementById('add-expiry').value = getOffsetDate(7);
+            document.getElementById('add-ingredient-modal').classList.remove('hidden');
+        }
+
+        function closeAddIngredientModal() {
+            document.getElementById('add-ingredient-modal').classList.add('hidden');
+        }
+
+        function addNewIngredient() {
+            if (!currentUser) {
+                showToast("로그인이 완료되지 않았습니다.", "error");
+                return;
+            }
+            const name = document.getElementById('add-name').value.trim();
+            const category = document.getElementById('add-category').value;
+            const expiry = document.getElementById('add-expiry').value;
+
+            if (!name) {
+                showToast("식재료 명칭을 정확히 입력해 주세요.", "error");
+                return;
+            }
+
+            // 인덱스 무결성을 보장하기 위해 null 요소 걸러내고 안전하게 ID 생성
+            const validIngredients = cleanIngredientsArray(state.ingredients);
+            const newId = validIngredients.length > 0 
+                ? Math.max(...validIngredients.filter(i => i && i.id).map(i => parseInt(i.id) || 0)) + 1 
+                : 1;
+                
+            state.ingredients.push({ id: String(newId), name, category, expiry });
+            
+            persistData('ingredients');
+            closeAddIngredientModal();
+            renderFridge();
+            showToast(`'${name}' 식재료를 보관함에 등록했습니다.`);
+            
+            document.getElementById('add-name').value = '';
+        }
+
+        function removeIngredient(id) {
+            if (!currentUser) {
+                showToast("삭제 권한이 없습니다. 로그인이 필요합니다.", "error");
+                return;
+            }
+            const target = state.ingredients.find(item => item && String(item.id) === String(id));
+            
+            showCustomConfirm(
+                "식재료 비우기",
+                `보관 식재료 '${target ? target.name : '선택 식재료'}'를 삭제하시겠습니까?`,
+                () => {
+                    state.ingredients = state.ingredients.filter(item => item && String(item.id) !== String(id));
+                    persistData('ingredients');
+                    renderFridge();
+                    renderDashboard();
+                    showToast(`'${target ? target.name : '식재료'}'를 보관함에서 비웠습니다.`, "info");
+                }
+            );
+        }
+
+        // 3. 주간 식단 플래너 렌더링
+        function renderPlanner() {
+            const container = document.getElementById('weekly-calendar');
+            container.innerHTML = '';
+
+            // 실시간 현재 요일 검사 매핑 (현재 요일에만 오늘 배지 적용)
+            const daysOfWeek = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
+            const todayName = daysOfWeek[new Date().getDay()];
+
+            state.weeklyPlanner.forEach((item, idx) => {
+                const isToday = item.day === todayName;
+
+                container.innerHTML += `
+                    <div class="bg-white rounded-2xl p-4 border ${isToday ? 'border-[#E76F51] ring-1 ring-[#E76F51]' : 'border-slate-100'} shadow-sm flex flex-col justify-between space-y-4">
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-extrabold text-[#1B4332]">${item.day}</span>
+                                ${isToday ? '<span class="bg-[#E76F51] text-white text-[9px] font-black px-1.5 py-0.5 rounded">오늘</span>' : ''}
+                            </div>
+                            <hr class="border-slate-100">
+                        </div>
+                        
+                        <div class="space-y-3">
+                            <div class="group/menu relative">
+                                <span class="text-[9px] font-bold text-slate-400 uppercase">아침</span>
+                                <p class="text-xs font-semibold text-slate-800 line-clamp-2">${item.breakfast || '식단 없음'}</p>
+                            </div>
+                            <div class="group/menu relative">
+                                <span class="text-[9px] font-bold text-slate-400 uppercase">점심</span>
+                                <p class="text-xs font-semibold text-slate-800 line-clamp-2">${item.lunch || '식단 없음'}</p>
+                            </div>
+                            <div class="group/menu relative">
+                                <span class="text-[9px] font-bold text-slate-400 uppercase">저녁</span>
+                                <p class="text-xs font-semibold text-slate-800 line-clamp-2">${item.dinner || '식단 없음'}</p>
+                            </div>
+                        </div>
+
+                        <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
+                            <span class="text-[8px] text-emerald-600 font-bold"><i class="fa-solid fa-circle-check mr-0.5"></i>식생활 설계</span>
+                            <button onclick="openEditMealModal(${idx})" class="text-[10px] text-[#E76F51] font-bold hover:underline flex items-center space-x-0.5">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                                <span>식단 편집</span>
+                            </button>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        function openEditMealModal(idx) {
+            if (!currentUser) {
+                showToast("로그인이 완료되어야 식단을 설계할 수 있습니다.", "error");
+                openAuthModal();
+                return;
+            }
+            const currentPlan = state.weeklyPlanner[idx] || { day: "", breakfast: "", lunch: "", dinner: "" };
+            document.getElementById('edit-meal-day-title').innerText = currentPlan.day;
+            document.getElementById('edit-breakfast').value = currentPlan.breakfast || "";
+            document.getElementById('edit-lunch').value = currentPlan.lunch || "";
+            document.getElementById('edit-dinner').value = currentPlan.dinner || "";
+            document.getElementById('edit-meal-index').value = idx;
+
+            document.getElementById('edit-meal-modal').classList.remove('hidden');
+        }
+
+        function closeEditMealModal() {
+            document.getElementById('edit-meal-modal').classList.add('hidden');
+        }
+
+        function saveCustomMeal() {
+            if (!currentUser) {
+                showToast("로그인이 유실되었습니다. 다시 로그인 하세요.", "error");
+                return;
+            }
+            const idx = parseInt(document.getElementById('edit-meal-index').value);
+            const bf = document.getElementById('edit-breakfast').value.trim();
+            const lc = document.getElementById('edit-lunch').value.trim();
+            const dn = document.getElementById('edit-dinner').value.trim();
+
+            state.weeklyPlanner[idx].breakfast = bf;
+            state.weeklyPlanner[idx].lunch = lc;
+            state.weeklyPlanner[idx].dinner = dn;
+
+            persistData('planner');
+            closeEditMealModal();
+            renderPlanner();
+            showToast(`${state.weeklyPlanner[idx].day} 식단을 저장했습니다!`);
+        }
+
+        // 식단표 완전히 초기화
+        function resetPlannerToDefault() {
+            if (!currentUser) {
+                showToast("로그인이 필요합니다.", "error");
+                return;
+            }
+            showCustomConfirm(
+                "식단표 초기화",
+                "작성하신 일주일치 식단표를 모두 비우고 초기화하시겠습니까?",
+                () => {
+                    state.weeklyPlanner = JSON.parse(JSON.stringify(defaultPlanner));
+                    persistData('planner');
+                    renderPlanner();
+                    showToast("식단표를 깨끗하게 초기화했습니다.", "info");
+                }
+            );
+        }
+
+        // 식단 텍스트 내보내기
+        function exportPlannerList() {
+            if (!currentUser) {
+                showToast("로그인이 필요한 기능입니다.", "error");
+                return;
+            }
+            let listText = `[Today's Table - 나의 주간 커스텀 식표]\n\n`;
+            state.weeklyPlanner.forEach(item => {
+                listText += `■ ${item.day}\n - 아침: ${item.breakfast || '미지정'}\n - 점심: ${item.lunch || '미지정'}\n - 저녁: ${item.dinner || '미정'}\n\n`;
+            });
+            listText += `오늘도 맛있는 하루를 준비하세요!`;
+            
+            const textArea = document.createElement("textarea");
+            textArea.value = listText;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+
+            showToast("식표 텍스트 전문이 클립보드에 복사되었습니다!");
+        }
+
+        // 4. 실시간 평점 및 후기(VOC) 렌더링
+        function calculateAverageRating() {
+            if (state.reviews.length === 0) return "0.0";
+            const sum = state.reviews.reduce((acc, r) => acc + r.rating, 0);
+            return (sum / state.reviews.length).toFixed(1);
+        }
+
+        function renderReviews() {
+            const container = document.getElementById('review-list-container');
+            container.innerHTML = '';
+
+            const avg = calculateAverageRating();
+            document.getElementById('review-avg-score').innerText = avg;
+            document.getElementById('review-total-count').innerText = state.reviews.length;
+            document.getElementById('review-list-count').innerText = state.reviews.length;
+
+            renderStatStars(parseFloat(avg));
+            renderRatingDistribution();
+
+            if (state.reviews.length === 0) {
+                container.innerHTML = `
+                    <div class="h-full flex flex-col items-center justify-center text-slate-400">
+                        <i class="fa-regular fa-comments text-5xl mb-3"></i>
+                        <p class="text-sm font-bold">아직 작성된 이용자 후기가 없습니다.</p>
+                        <p class="text-xs">첫 번째 소중한 평점과 후기를 기록해 주세요!</p>
+                    </div>`;
+                return;
+            }
+
+            // 후기 최신순 정렬
+            const sortedReviews = [...state.reviews].sort((a,b) => {
+                const idA = String(a.id || '');
+                const idB = String(b.id || '');
+                return idB.localeCompare(idA);
+            });
+
+            sortedReviews.forEach(rev => {
+                let starsHtml = '';
+                for (let i = 1; i <= 5; i++) {
+                    if (i <= rev.rating) {
+                        starsHtml += '<i class="fa-solid fa-star text-amber-400 text-xs"></i>';
+                    } else {
+                        starsHtml += '<i class="fa-regular fa-star text-slate-200 text-xs"></i>';
+                    }
+                }
+
+                // 수정/삭제 권한 통제 검증
+                const isMyReview = currentUser && rev.userId === currentUser.uid;
+                let actionAreaHtml = '';
+                if (isMyReview) {
+                    actionAreaHtml = `
+                        <div class="flex items-center space-x-2 text-[10px] text-slate-400">
+                            <button onclick="openEditReviewModal('${rev.id}')" class="text-emerald-700 hover:underline font-bold"><i class="fa-solid fa-pen mr-0.5"></i>수정</button>
+                            <span class="text-slate-200">|</span>
+                            <button onclick="deleteReview('${rev.id}')" class="text-rose-500 hover:underline font-bold"><i class="fa-solid fa-trash-can mr-0.5"></i>삭제</button>
+                        </div>
+                    `;
+                }
+
+                container.innerHTML += `
+                    <div class="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-2 relative transition-all hover:shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs font-extrabold text-slate-700">${rev.name}</span>
+                                <span class="text-[10px] text-slate-400">${rev.date}</span>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <div class="flex space-x-0.5">
+                                    ${starsHtml}
+                                </div>
+                                ${actionAreaHtml}
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-600 leading-relaxed">${rev.content}</p>
+                    </div>`;
+            });
+        }
+
+        // 후기 편집 모달 제어
+        let currentEditReviewRating = 5;
+
+        function openEditReviewModal(id) {
+            const rev = state.reviews.find(r => String(r.id) === String(id));
+            if (!rev) return;
+
+            document.getElementById('edit-review-id-hidden').value = id;
+            document.getElementById('edit-review-content-input').value = rev.content;
+            setEditReviewModalRating(rev.rating);
+
+            document.getElementById('edit-review-modal').classList.remove('hidden');
+        }
+
+        function closeEditReviewModal() {
+            document.getElementById('edit-review-modal').classList.add('hidden');
+        }
+
+        function setEditReviewModalRating(rating) {
+            currentEditReviewRating = rating;
+            const container = document.getElementById('edit-review-stars-container');
+            container.innerHTML = '';
+
+            for (let i = 1; i <= 5; i++) {
+                const iconClass = i <= rating ? 'fa-solid fa-star text-amber-300' : 'fa-regular fa-star text-slate-300';
+                container.innerHTML += `
+                    <button type="button" class="hover:scale-110 transition-transform" onclick="setEditReviewModalRating(${i})">
+                        <i class="${iconClass}"></i>
+                    </button>
+                `;
+            }
+        }
+
+        function submitEditReview() {
+            const id = document.getElementById('edit-review-id-hidden').value;
+            const content = document.getElementById('edit-review-content-input').value.trim();
+
+            if (!content) {
+                showToast("의견을 상세히 작성해 주세요.", "error");
+                return;
+            }
+
+            if (isFirebaseConnected) {
+                firebase.database().ref('reviews/' + id).update({
+                    content: content,
+                    rating: currentEditReviewRating
+                }).then(() => {
+                    showToast("후기가 수정되었습니다.");
+                    closeEditReviewModal();
+                }).catch(err => {
+                    console.error("후기 수정 실패:", err);
+                    showToast("클라우드 서버 오류가 발생하여 수정할 수 없습니다.", "error");
+                });
+            } else {
+                const targetIdx = state.reviews.findIndex(r => String(r.id) === String(id));
+                if (targetIdx !== -1) {
+                    state.reviews[targetIdx].content = content;
+                    state.reviews[targetIdx].rating = currentEditReviewRating;
+                    saveLocal('reviews');
+                    renderReviews();
+                    renderDashboard();
+                    showToast("후기가 수정되었습니다.");
+                    closeEditReviewModal();
+                }
+            }
+        }
+
+        function deleteReview(id) {
+            showCustomConfirm(
+                "후기 삭제",
+                "작성하신 이용 후기를 정말 삭제하시겠습니까?",
+                () => {
+                    if (isFirebaseConnected) {
+                        firebase.database().ref('reviews/' + id).remove()
+                            .then(() => {
+                                showToast("후기가 삭제되었습니다.");
+                            })
+                            .catch(err => {
+                                console.error("후기 삭제 오류:", err);
+                                showToast("클라우드 삭제 처리 도중 오류가 발생했습니다.", "error");
+                            });
+                    } else {
+                        state.reviews = state.reviews.filter(r => String(r.id) !== String(id));
+                        saveLocal('reviews');
+                        renderReviews();
+                        renderDashboard();
+                        showToast("후기가 삭제되었습니다.");
+                    }
+                }
+            );
+        }
+
+        // 평점 종합 별 렌더링
+        function renderStatStars(avg) {
+            const starContainer = document.getElementById('stat-stars');
+            if(!starContainer) return;
+            starContainer.innerHTML = '';
+            
+            for (let i = 1; i <= 5; i++) {
+                if (avg >= i) {
+                    starContainer.innerHTML += '<i class="fa-solid fa-star"></i>';
+                } else if (avg >= i - 0.5) {
+                    starContainer.innerHTML += '<i class="fa-solid fa-star-half-stroke"></i>';
+                } else {
+                    starContainer.innerHTML += '<i class="fa-regular fa-star text-slate-300"></i>';
+                }
+            }
+        }
+
+        // 평점 분포 렌더링
+        function renderRatingDistribution() {
+            const distributionContainer = document.getElementById('review-rating-distribution');
+            if(!distributionContainer) return;
+            distributionContainer.innerHTML = '';
+
+            const total = state.reviews.length;
+            if (total === 0) {
+                distributionContainer.innerHTML = `
+                    <p class="text-xs text-slate-400 text-center py-2">등록된 통계가 없습니다.</p>
+                `;
+                return;
+            }
+
+            const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+            state.reviews.forEach(r => {
+                const roundedRating = Math.round(r.rating);
+                if (counts[roundedRating] !== undefined) {
+                    counts[roundedRating]++;
+                } else {
+                    counts[3]++;
+                }
+            });
+
+            const score5Percent = Math.round((counts[5] / total) * 100);
+            const score4Percent = Math.round((counts[4] / total) * 100);
+            const scoreUnder3Percent = Math.round(((counts[3] + counts[2] + counts[1]) / total) * 100);
+
+            distributionContainer.innerHTML = `
+                <div class="space-y-2 pt-2 text-left">
+                    <div class="flex items-center text-xs text-slate-500">
+                        <span class="w-10">5점</span>
+                        <div class="flex-1 bg-slate-100 h-2.5 rounded-full overflow-hidden mx-2">
+                            <div class="bg-amber-400 h-full transition-all duration-500" style="width: ${score5Percent}%"></div>
+                        </div>
+                        <span class="w-6 text-right">${score5Percent}%</span>
+                    </div>
+                    <div class="flex items-center text-xs text-slate-500">
+                        <span class="w-10">4점</span>
+                        <div class="flex-1 bg-slate-100 h-2.5 rounded-full overflow-hidden mx-2">
+                            <div class="bg-amber-400 h-full transition-all duration-500" style="width: ${score4Percent}%"></div>
+                        </div>
+                        <span class="w-6 text-right">${score4Percent}%</span>
+                    </div>
+                    <div class="flex items-center text-xs text-slate-500">
+                        <span class="w-10">3점 이하</span>
+                        <div class="flex-1 bg-slate-100 h-2.5 rounded-full overflow-hidden mx-2">
+                            <div class="bg-slate-200 h-full transition-all duration-500" style="width: ${scoreUnder3Percent}%"></div>
+                        </div>
+                        <span class="w-6 text-right">${scoreUnder3Percent}%</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function setReviewRating(rating) {
+            state.currentWriteRating = rating;
+            for (let i = 1; i <= 5; i++) {
+                const starIcon = document.getElementById(`write-star-${i}`);
+                if (i <= rating) {
+                    starIcon.className = "fa-solid fa-star text-amber-300";
+                } else {
+                    starIcon.className = "fa-regular fa-star text-emerald-700";
+                }
+            }
+        }
+
+        function addNewReview() {
+            if (!currentUser) {
+                showToast("로그인 후 작성할 수 있습니다.", "error");
+                return;
+            }
+            const writerInput = document.getElementById('review-writer');
+            const contentInput = document.getElementById('review-content');
+
+            const writer = writerInput.value.trim();
+            const content = contentInput.value.trim();
+
+            if (!writer) {
+                showToast("닉네임을 입력해 주세요.", "error");
+                return;
+            }
+            if (!content) {
+                showToast("의견을 상세하게 기입해 주세요.", "error");
+                return;
+            }
+
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            const newReview = {
+                name: writer,
+                rating: state.currentWriteRating,
+                content: content,
+                date: todayStr,
+                userId: currentUser.uid
+            };
+
+            if (isFirebaseConnected) {
+                firebase.database().ref('reviews').push(newReview)
+                    .then(() => {
+                        showToast("의견이 공용 데이터베이스에 저장되었습니다!");
+                    })
+                    .catch((err) => {
+                        console.error("후기 저장 에러:", err);
+                        showToast("클라우드 저장 실패. 로컬 모드로 임시 보존합니다.", "error");
+                    });
+            } else {
+                const newId = state.reviews.length > 0 ? String(Math.max(...state.reviews.map(r => parseInt(r.id) || 1)) + 1) : "1";
+                state.reviews.push({ id: newId, ...newReview });
+                saveLocal('reviews');
+                renderReviews();
+                renderDashboard();
+                showToast("소중한 의견이 로컬 브라우저에 안전하게 기록되었습니다!");
+            }
+
+            writerInput.value = '';
+            contentInput.value = '';
+            setReviewRating(5);
+        }
+
+        // ============================================
+        // AUTHENTICATION CONTROLLER (로그인 / 회원가입)
+        // ============================================
+        let authMode = "LOGIN";
+
+        function openAuthModal() {
+            if (!isFirebaseConnected) {
+                showToast("로컬 환경(file:///)에서는 구글 보안상 로그인 팝업 가동이 제한되므로, Netlify에 최종 배포 후 정상 가용됩니다.", "info");
+                return;
+            }
+            document.getElementById('auth-modal').classList.remove('hidden');
+        }
+
+        function closeAuthModal() {
+            document.getElementById('auth-modal').classList.add('hidden');
+            // 로그인 완료 후 현재 탭 자동 새로고침
+            setTimeout(() => {
+                navigate(state.currentTab);
+            }, 500);
+        }
+
+        function toggleAuthMode() {
+            if (authMode === "LOGIN") {
+                authMode = "SIGNUP";
+                document.getElementById('auth-modal-title').innerHTML = `<i class="fa-solid fa-user-plus mr-2 text-emerald-400"></i>회원가입`;
+                document.getElementById('auth-submit-btn').innerText = "가입 및 로그인";
+                document.getElementById('auth-toggle-btn').innerHTML = `이미 계정이 있으신가요? <span class="text-[#E76F51] font-bold">로그인</span>`;
+            } else {
+                authMode = "LOGIN";
+                document.getElementById('auth-modal-title').innerHTML = `<i class="fa-solid fa-user-lock mr-2 text-emerald-400"></i>로그인`;
+                document.getElementById('auth-submit-btn').innerText = "로그인 하기";
+                document.getElementById('auth-toggle-btn').innerHTML = `아직 회원이 아니신가요? <span class="text-[#E76F51] font-bold">회원가입</span>`;
+            }
+        }
+
+        function handleAuthSubmit() {
+            const email = document.getElementById('auth-email').value.trim();
+            const password = document.getElementById('auth-password').value;
+
+            if (!email || !password) {
+                showToast("이메일과 비밀번호를 채워 주세요.", "error");
+                return;
+            }
+
+            if (authMode === "LOGIN") {
+                firebase.auth().signInWithEmailAndPassword(email, password)
+                    .then(() => {
+                        closeAuthModal();
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                        showToast(`로그인 실패: 이메일이나 비밀번호를 확인해 주세요.`, "error");
+                    });
+            } else {
+                firebase.auth().createUserWithEmailAndPassword(email, password)
+                    .then(() => {
+                        closeAuthModal();
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                        showToast(`회원가입 실패: ${error.message}`, "error");
+                    });
+            }
+        }
+
+        function handleGoogleLogin() {
+            if (!isFirebaseConnected) {
+                showToast("파이어베이스 설정 주소가 채워지지 않았습니다.", "error");
+                return;
+            }
+
+            if (window.location.protocol === 'file:') {
+                showToast("구글 로그인은 보안상 웹 주소(http/https) 배포 후에 정상 가동됩니다!", "info");
+                return;
+            }
+
+            const provider = new firebase.auth.GoogleAuthProvider();
+            firebase.auth().signInWithPopup(provider)
+                .then((result) => {
+                    closeAuthModal();
+                    showToast("구글 로그인 성공!");
+                })
+                .catch((error) => {
+                    console.error("구글 인증 오류:", error);
+                    showToast(`구글 로그인 실패: ${error.message}`, "error");
+                });
+        }
+
+        // 안전한 로그아웃 청소
+        function handleLogout() {
+            if (!isFirebaseConnected) return;
+            unsubscribeFirebaseListeners();
+            firebase.auth().signOut().then(() => {
+                showToast("정상적으로 로그아웃되었습니다.", "info");
+            });
+        }
+
+        // 초기 기동기
+        window.onload = function() {
+            initLocalState();
+            if (isFirebaseConnected) {
+                setupFirebaseSync();
+            }
+            navigate(state.currentTab);
+        }
+    </script>
+</body>
+</html>
