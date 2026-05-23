@@ -516,7 +516,7 @@
                 </div>
 
                 <!-- 빈 상태 메시지 -->
-                <div id="blog-empty-state" class="col-span-full text-center py-16">
+                <div id="blog-empty-state" class="hidden col-span-full text-center py-16">
                     <div class="text-slate-300 text-5xl mb-4"><i class="fa-solid fa-pen"></i></div>
                     <p class="text-slate-500 font-medium">아직 게시된 글이 없습니다.</p>
                     <p class="text-slate-400 text-sm mt-2">첫 번째 이야기를 나눠보세요!</p>
@@ -614,7 +614,7 @@
                 <span class="text-[9px] font-bold">홈</span>
             </button>
             <button onclick="navigate('fridge')" class="mobile-nav-btn flex flex-col items-center justify-center space-y-0.5 transition-colors" id="mob-nav-fridge">
-                <i class="fa-solid fa-refrigerator text-base"></i>
+                <i class="fa-solid fa-snowflake text-base"></i>
                 <span class="text-[9px] font-bold">냉장고</span>
             </button>
             <button onclick="navigate('planner')" class="mobile-nav-btn flex flex-col items-center justify-center space-y-0.5 transition-colors" id="mob-nav-planner">
@@ -1014,6 +1014,20 @@
         // Firebase 실시간 동기화
         function setupFirebaseSync() {
             if (!isFirebaseConnected) return;
+
+            // 모바일 구글 Redirect 로그인 후 결과 처리
+            firebase.auth().getRedirectResult()
+                .then((result) => {
+                    if (result && result.user) {
+                        closeAuthModal();
+                        showToast("구글 로그인 성공!");
+                    }
+                })
+                .catch((error) => {
+                    if (error.code !== 'auth/no-auth-event') {
+                        console.error("Redirect 결과 오류:", error);
+                    }
+                });
 
             // 실시간 글로벌 후기 리스너 가동
             firebase.database().ref('reviews').on('value', (snapshot) => {
@@ -2491,10 +2505,12 @@
             
             if (sortedBlogs.length === 0) {
                 emptyState.classList.remove('hidden');
+                container.classList.add('hidden');
                 return;
             }
             
             emptyState.classList.add('hidden');
+            container.classList.remove('hidden');
             
             sortedBlogs.forEach(blog => {
                 let categoryLabel = {
@@ -2823,15 +2839,27 @@
             }
 
             const provider = new firebase.auth.GoogleAuthProvider();
-            firebase.auth().signInWithPopup(provider)
-                .then((result) => {
-                    closeAuthModal();
-                    showToast("구글 로그인 성공!");
-                })
-                .catch((error) => {
-                    console.error("구글 인증 오류:", error);
-                    showToast(`구글 로그인 실패: ${error.message}`, "error");
-                });
+
+            // 모바일(또는 인앱브라우저)에서는 Redirect 방식 사용 (Popup은 403 disallowed_useragent 발생)
+            const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
+            if (isMobile) {
+                firebase.auth().signInWithRedirect(provider)
+                    .catch((error) => {
+                        console.error("구글 Redirect 인증 오류:", error);
+                        showToast(`구글 로그인 실패: ${error.message}`, "error");
+                    });
+            } else {
+                firebase.auth().signInWithPopup(provider)
+                    .then((result) => {
+                        closeAuthModal();
+                        showToast("구글 로그인 성공!");
+                    })
+                    .catch((error) => {
+                        console.error("구글 인증 오류:", error);
+                        showToast(`구글 로그인 실패: ${error.message}`, "error");
+                    });
+            }
         }
 
         // 안전한 로그아웃 청소
