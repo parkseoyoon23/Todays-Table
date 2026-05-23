@@ -87,7 +87,7 @@
     <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         <!-- 1. 대시보드 탭 (HOME) -->
-        <section id="tab-dashboard" class="space-y-8">
+        <section id="tab-dashboard" class="hidden space-y-8">
             <!-- 웰컴 배너 -->
             <div class="bg-gradient-to-r from-[#1B4332] to-[#2D6A4F] text-white rounded-3xl p-6 md:p-10 shadow-lg relative overflow-hidden">
                 <div class="relative z-10 max-w-2xl space-y-4">
@@ -311,7 +311,20 @@
 
         <!-- 4. 장보기 노트 탭 -->
         <section id="tab-notes" class="hidden space-y-6">
-            <div class="space-y-6">
+            <!-- 비로그인 잠금 화면 -->
+            <div id="notes-locked-overlay" class="hidden py-16 flex flex-col items-center justify-center text-center bg-white rounded-3xl border border-slate-100 shadow-sm space-y-4 max-w-2xl mx-auto my-12">
+                <div class="bg-rose-50 text-[#E76F51] p-5 rounded-full animate-bounce">
+                    <i class="fa-solid fa-lock text-3xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800">로그인이 필요한 기능입니다</h3>
+                <p class="text-xs text-slate-400 max-w-xs">장보기 노트를 작성하고 저장하려면 로그인 후 이용해 주세요.</p>
+                <button onclick="openAuthModal()" class="bg-[#1B4332] hover:bg-[#122e22] text-white px-6 py-2.5 rounded-xl font-bold text-xs transition-all shadow-md">
+                    로그인 / 회원가입 하러가기
+                </button>
+            </div>
+
+            <!-- 로그인 활성화 화면 -->
+            <div id="notes-unlocked-content" class="space-y-6">
                 <!-- 노트 헤더 배너 -->
                 <div class="bg-gradient-to-r from-[#1B4332] to-[#2D6A4F] text-white rounded-3xl p-6 md:p-8 shadow-lg">
                     <div class="space-y-2">
@@ -357,7 +370,7 @@
                         <i class="fa-solid fa-trash"></i> 모두 삭제
                     </button>
                 </div>
-            </div>
+            </div><!-- notes-unlocked-content -->
         </section>
 
         <!-- 5. 이용자 후기 탭 (REALTIME REVIEWS & VOC) -->
@@ -980,22 +993,32 @@
                     const displayName = user.displayName || user.email.split('@')[0];
                     document.getElementById('auth-btn').innerText = `${displayName} (로그아웃)`;
                     document.getElementById('auth-btn').setAttribute('onclick', 'handleLogout()');
-                    showToast(`${displayName}님, 환영합니다!`);
+
+                    // 새로고침(페이지 재로드)이 아닌 실제 로그인 시에만 환영 토스트 표시
+                    if (sessionStorage.getItem('tt_welcomed') !== '1') {
+                        showToast(`${displayName}님, 환영합니다!`);
+                        sessionStorage.setItem('tt_welcomed', '1');
+                    }
 
                     syncUserDataFromCloud(user.uid);
                     
-                    // 로그인 완료 후 현재 탭 자동 업데이트
+                    // 인증 확인 후 현재 탭 렌더링
                     setTimeout(() => {
                         navigate(state.currentTab);
-                    }, 800);
+                    }, 400);
                 } else {
                     currentUser = null;
+                    sessionStorage.removeItem('tt_welcomed');
                     document.getElementById('auth-btn').innerText = "로그인 / 회원가입";
                     document.getElementById('auth-btn').setAttribute('onclick', 'openAuthModal()');
                     
                     // 로그아웃 시 캐시를 전면 날려 타인 데이터 노출 원천 차단
                     localStorage.removeItem('todays_table_ingredients');
-                    localStorage.removeItem('todays_table_planner');
+                    localStorage.removeItem('todays_table_planner_general');
+                    localStorage.removeItem('todays_table_planner_bulking');
+                    localStorage.removeItem('todays_table_planner_diet');
+                    localStorage.removeItem('todays_table_planner_goal');
+                    localStorage.removeItem('todays_table_notes');
                     
                     unsubscribeFirebaseListeners();
                     initLocalState();
@@ -1010,7 +1033,6 @@
             unsubscribeFirebaseListeners();
 
             activeIngredientsRef = firebase.database().ref(`users/${uid}/ingredients`);
-            activePlannerRef = firebase.database().ref(`users/${uid}/weeklyPlanner`);
 
             // 1. 개인 식재료 로드
             activeIngredientsRef.once('value').then((snapshot) => {
@@ -1036,28 +1058,38 @@
                 });
             });
 
-            // 2. 개인 식단표 로드
+            // 2. 개인 식단표 로드 (목표별 분리 저장)
+            activePlannerRef = firebase.database().ref(`users/${uid}/planners`);
+
             activePlannerRef.once('value').then((snapshot) => {
-                const data = snapshot.val();
-                state.weeklyPlanner = ensureArray(data);
-                if (state.weeklyPlanner.length === 0) {
-                    state.weeklyPlanner = JSON.parse(JSON.stringify(defaultPlanner));
-                }
-                saveLocal('planner');
+                const data = snapshot.val() || {};
+
+                // 목표별 플래너 로드 헬퍼
+                const loadGoalPlanner = (goal, raw) => {
+                    const arr = ensureArray(raw);
+                    state.weeklyPlanners[goal] = arr.length > 0 ? arr : JSON.parse(JSON.stringify(defaultPlanner));
+                    localStorage.setItem(`todays_table_planner_${goal}`, JSON.stringify(state.weeklyPlanners[goal]));
+                };
+
+                loadGoalPlanner('general', data.general);
+                loadGoalPlanner('bulking', data.bulking);
+                loadGoalPlanner('diet', data.diet);
+
+                // 현재 선택 목표로 weeklyPlanner 세팅
+                state.weeklyPlanner = JSON.parse(JSON.stringify(state.weeklyPlanners[state.plannerGoal]));
                 renderPlanner();
 
+                // 실시간 리스너
                 activePlannerRef.on('value', (snap) => {
                     if (currentUser && currentUser.uid === uid) {
-                        const realData = snap.val();
                         const now = Date.now();
-                        
-                        // 최근 2초 내에 로컬에서 업데이트했으면 무시 (로컬 변경이 우선)
                         if (now - lastLocalPlannerUpdate > 2000) {
-                            state.weeklyPlanner = ensureArray(realData);
-                            if (state.weeklyPlanner.length === 0) {
-                                state.weeklyPlanner = JSON.parse(JSON.stringify(defaultPlanner));
-                            }
-                            saveLocal('planner');
+                            const realData = snap.val() || {};
+                            loadGoalPlanner('general', realData.general);
+                            loadGoalPlanner('bulking', realData.bulking);
+                            loadGoalPlanner('diet', realData.diet);
+                            // 현재 목표 기준으로 weeklyPlanner 갱신
+                            state.weeklyPlanner = JSON.parse(JSON.stringify(state.weeklyPlanners[state.plannerGoal]));
                             renderPlanner();
                         }
                     }
@@ -1086,7 +1118,7 @@
                     if (type === 'ingredients') {
                         promise = firebase.database().ref(`users/${uid}/ingredients`).set(state.ingredients);
                     } else if (type === 'planner') {
-                        promise = firebase.database().ref(`users/${uid}/weeklyPlanner`).set(state.weeklyPlanner);
+                        promise = firebase.database().ref(`users/${uid}/planners/${state.plannerGoal}`).set(state.weeklyPlanner);
                     }
 
                     if (promise) {
@@ -1237,7 +1269,7 @@
                 const unlockedView = document.getElementById('planner-unlocked-content');
                 
                 // currentUser가 없어도 localStorage에 로그인 기록이 있으면 콘텐츠 표시
-                const hasLoginHistory = localStorage.getItem('todays_table_planner') !== null;
+                const hasLoginHistory = localStorage.getItem('todays_table_planner_general') !== null;
                 
                 if (!currentUser && !hasLoginHistory) {
                     lockedView.classList.remove('hidden');
@@ -1250,7 +1282,16 @@
                     updatePlannerGoalButtons();
                 }
             } else if (tabId === 'notes') {
-                renderNotes();
+                const notesLockedView = document.getElementById('notes-locked-overlay');
+                const notesUnlockedView = document.getElementById('notes-unlocked-content');
+                if (!currentUser) {
+                    notesLockedView.classList.remove('hidden');
+                    notesUnlockedView.classList.add('hidden');
+                } else {
+                    notesLockedView.classList.add('hidden');
+                    notesUnlockedView.classList.remove('hidden');
+                    renderNotes();
+                }
             } else if (tabId === 'blog') {
                 // 대표 계정만 공지 작성 버튼 표시
                 const adminBtn = document.getElementById('admin-notice-btn');
@@ -2051,6 +2092,11 @@
         }
 
         function addNote() {
+            if (!currentUser) {
+                showToast("로그인이 필요합니다.", "error");
+                openAuthModal();
+                return;
+            }
             const input = document.getElementById('note-input');
             const text = input.value.trim();
             
@@ -2747,10 +2793,18 @@
         // 초기 기동기
         window.onload = function() {
             initLocalState();
+            // 인증 확인 전에 저장된 탭을 즉시 표시 (대시보드 깜빡임 방지)
+            const allTabs = ['dashboard','fridge','planner','notes','blog','reviews'];
+            allTabs.forEach(id => document.getElementById(`tab-${id}`).classList.add('hidden'));
+            document.getElementById(`tab-${state.currentTab}`).classList.remove('hidden');
+
             if (isFirebaseConnected) {
                 setupFirebaseSync();
+                // Firebase가 연결된 경우 인증 확인 후 navigate (onAuthStateChanged에서 처리)
+            } else {
+                // Firebase 없으면 바로 navigate
+                navigate(state.currentTab);
             }
-            navigate(state.currentTab);
         }
     </script>
 </body>
