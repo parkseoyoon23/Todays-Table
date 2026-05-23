@@ -2685,9 +2685,11 @@
             
             document.getElementById('blog-detail-content').innerText = blog.content;
 
-            // 본인 글일 때만 삭제 버튼 표시
+            // 본인 글이거나 관리자일 때 삭제 버튼 표시
             const deleteBtn = document.getElementById('blog-delete-btn');
-            if (currentUser && currentUser.uid === blog.userId) {
+            const isAdmin = currentUser && currentUser.email === ADMIN_EMAIL;
+            const isOwner = currentUser && currentUser.uid === blog.userId;
+            if (isOwner || isAdmin) {
                 deleteBtn.classList.remove('hidden');
             } else {
                 deleteBtn.classList.add('hidden');
@@ -2705,8 +2707,11 @@
             if (!currentBlogDetailId) return;
 
             const blog = state.blogs.find(b => b.id === currentBlogDetailId);
-            if (!blog || (currentUser && currentUser.uid !== blog.userId)) {
-                showToast("본인이 작성한 글만 삭제할 수 있습니다.", "error");
+            const isAdmin = currentUser && currentUser.email === ADMIN_EMAIL;
+            const isOwner = currentUser && blog && currentUser.uid === blog.userId;
+
+            if (!blog || (!isOwner && !isAdmin)) {
+                showToast("삭제 권한이 없습니다.", "error");
                 return;
             }
 
@@ -2714,22 +2719,23 @@
                 "글 삭제",
                 "이 글을 정말 삭제하시겠습니까?",
                 () => {
+                    // 삭제할 ID 임시 보관 (모달 닫히기 전에)
+                    const targetId = currentBlogDetailId;
+                    closeBlogDetailModal();
+
+                    // 로컬 state에서 즉시 제거 (UI 즉각 반영)
+                    state.blogs = state.blogs.filter(b => b.id !== targetId);
+                    saveLocal('blogs');
+                    renderBlog();
+                    showToast("글이 삭제되었습니다.");
+
+                    // Firebase에서도 제거
                     if (isFirebaseConnected) {
-                        firebase.database().ref('blogs/' + currentBlogDetailId).remove()
-                            .then(() => {
-                                showToast("글이 삭제되었습니다.");
-                                closeBlogDetailModal();
-                            })
+                        firebase.database().ref('blogs/' + targetId).remove()
                             .catch((err) => {
-                                console.error("삭제 에러:", err);
-                                showToast("삭제 실패. 다시 시도해주세요.", "error");
+                                console.error("Firebase 삭제 에러:", err);
+                                showToast("클라우드 동기화 실패. 새로고침 시 복원될 수 있습니다.", "error");
                             });
-                    } else {
-                        state.blogs = state.blogs.filter(b => b.id !== currentBlogDetailId);
-                        saveLocal('blogs');
-                        renderBlog();
-                        closeBlogDetailModal();
-                        showToast("글이 삭제되었습니다.");
                     }
                 }
             );
@@ -2878,6 +2884,11 @@
             const allTabs = ['dashboard','fridge','planner','notes','blog','reviews'];
             allTabs.forEach(id => document.getElementById(`tab-${id}`).classList.add('hidden'));
             document.getElementById(`tab-${state.currentTab}`).classList.remove('hidden');
+
+            // 로그인 불필요한 탭은 즉시 초기 렌더링 (모바일 빈 화면 방지)
+            if (state.currentTab === 'blog') renderBlog();
+            if (state.currentTab === 'reviews') renderReviews();
+            if (state.currentTab === 'dashboard') renderDashboard();
 
             if (isFirebaseConnected) {
                 setupFirebaseSync();
