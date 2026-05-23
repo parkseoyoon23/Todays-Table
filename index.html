@@ -2,11 +2,9 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="naver-site-verification" content="6e9d223e40fcd345644bb3c00f7e7874ea2385eb" /> <!--네이버 웹마스터 도구 소유권 --> 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="naver-site-verification" content="52b5968548c1bac61b266f5e853c682b35ef16ea" />
     <meta name="google-adsense-account" content="ca-pub-8135615052442593"> <!-- 구글 애드센스 식별  -->
-    <meta name="description" content="Today's Table은 냉장고 식재료 유통기한 관리, 식단 계획, 음식 관리 기능을 제공하는 스마트 식단 관리 서비스입니다.">
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-P8295V5RL8"></script>
     <script>
@@ -32,12 +30,15 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
+    <!-- html2canvas (스크린샷) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
     <!-- 카카오톡, 페이스북 공유 시 예쁘게 채워지는 오픈그래프 태그 -->
     <meta property="og:type" content="website">
     <meta property="og:title" content="Today's Table">
     <meta property="og:description" content="우리 집 냉장고 속 재료로 직접 설계하는 웰니스 주간 식표 다이어리!">
     <meta property="og:image" content="https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=600&q=80">
-    <meta property="og:url" content="https://www.mysiktak.com" />
+    <meta property="og:url" content="https://mysiktak.com" />
     <style>
         body {
             font-family: 'Noto Sans KR', 'Poppins', sans-serif;
@@ -69,6 +70,7 @@
                 <button onclick="navigate('dashboard')" class="hover:text-[#E76F51] transition-colors nav-link text-emerald-100" id="nav-dashboard">대시보드</button>
                 <button onclick="navigate('fridge')" class="hover:text-[#E76F51] transition-colors nav-link text-emerald-100" id="nav-fridge">나의 냉장고</button>
                 <button onclick="navigate('planner')" class="hover:text-[#E76F51] transition-colors nav-link text-emerald-100" id="nav-planner">식단 메이커</button>
+                <button onclick="navigate('notes')" class="hover:text-[#E76F51] transition-colors nav-link text-emerald-100" id="nav-notes">장보기 노트</button>
                 <button onclick="navigate('blog')" class="hover:text-[#E76F51] transition-colors nav-link text-emerald-100" id="nav-blog">블로그</button>
                 <button onclick="navigate('reviews')" class="hover:text-[#E76F51] transition-colors nav-link text-emerald-100" id="nav-reviews">이용자 후기</button>
             </nav>
@@ -246,10 +248,26 @@
                         <h2 class="text-2xl font-extrabold text-[#1B4332]">식단 메이커 &amp; 플래너</h2>
                         <p class="text-sm text-slate-400">요일별 카드를 클릭하여 오늘의 아침, 점심, 저녁 식단 메뉴를 내 마음대로 직접 짜고 저장하세요!</p>
                     </div>
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 flex-wrap">
                         <button onclick="resetPlannerToDefault()" class="bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center space-x-1">
                             <i class="fa-solid fa-rotate-left"></i>
                             <span>식단표 초기화</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 목표 선택 및 도구 바 -->
+                <div class="bg-gradient-to-r from-emerald-50 to-slate-50 border border-emerald-100 rounded-2xl p-4 space-y-3">
+                    <label class="text-xs font-bold text-slate-600 block">🎯 식단 목표 선택</label>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="setPlannerGoal('general')" class="goal-btn px-4 py-2 rounded-lg text-xs font-bold transition-all bg-[#1B4332] text-white" data-goal="general">
+                            <i class="fa-solid fa-utensils mr-1"></i> 일반식
+                        </button>
+                        <button onclick="setPlannerGoal('bulking')" class="goal-btn px-4 py-2 rounded-lg text-xs font-bold transition-all bg-slate-200 text-slate-600" data-goal="bulking">
+                            <i class="fa-solid fa-dumbbell mr-1"></i> 벌크업
+                        </button>
+                        <button onclick="setPlannerGoal('diet')" class="goal-btn px-4 py-2 rounded-lg text-xs font-bold transition-all bg-slate-200 text-slate-600" data-goal="diet">
+                            <i class="fa-solid fa-leaf mr-1"></i> 다이어트
                         </button>
                     </div>
                 </div>
@@ -259,20 +277,90 @@
                     <!-- 동적 7일 플래너 렌더링 -->
                 </div>
 
-                <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 space-y-4">
                     <div class="space-y-1">
                         <p class="font-bold text-[#1B4332] text-base"><i class="fa-solid fa-file-invoice mr-2 text-[#E76F51]"></i>주간 작성된 나의 식단 텍스트로 보관하기</p>
                         <p class="text-xs text-slate-500">내가 짠 스마트 주간 식표 전체를 편리한 텍스트로 클립보드에 복사해 메모장이나 카카오톡에 저장해 두세요.</p>
                     </div>
-                    <button onclick="exportPlannerList()" class="bg-[#1B4332] hover:bg-[#122e22] text-white px-5 py-3 rounded-xl font-bold text-xs whitespace-nowrap transition-all flex items-center space-x-1.5">
-                        <i class="fa-solid fa-copy"></i>
-                        <span>나의 커스텀 주간 식표 전체 복사</span>
+                    <div class="flex gap-2 flex-wrap">
+                        <button onclick="exportPlannerList()" class="bg-[#1B4332] hover:bg-[#122e22] text-white px-5 py-3 rounded-xl font-bold text-xs whitespace-nowrap transition-all flex items-center space-x-1.5">
+                            <i class="fa-solid fa-copy"></i>
+                            <span>나의 커스텀 주간 식표 전체 복사</span>
+                        </button>
+                        <button onclick="captureWeeklyPlanner()" class="bg-[#E76F51] hover:bg-[#d65f41] text-white px-5 py-3 rounded-xl font-bold text-xs whitespace-nowrap transition-all flex items-center space-x-1.5">
+                            <i class="fa-solid fa-camera"></i>
+                            <span>식단표 스크린샷</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 냉장고 재료 표시 섹션 -->
+                <div class="bg-white border border-slate-100 rounded-2xl p-6 space-y-4">
+                    <div class="space-y-1">
+                        <p class="font-bold text-[#1B4332] text-base"><i class="fa-solid fa-refrigerator mr-2 text-emerald-600"></i>나의 냉장고 재료 & 유통기한</p>
+                        <p class="text-xs text-slate-500">현재 보유한 식재료를 확인하고 식단 계획 시 참고하세요.</p>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2" id="fridge-summary-container">
+                        <!-- JS 동적 렌더링 -->
+                    </div>
+                    <div id="fridge-summary-empty" class="text-center py-8 text-slate-400">
+                        <p class="text-sm">냉장고에 등록된 재료가 없습니다. <button onclick="navigate('fridge')" class="text-emerald-600 font-bold hover:underline">나의 냉장고</button>에서 추가해주세요.</p>
+                    </div>
+                </div>
+        </section>
+
+        <!-- 4. 장보기 노트 탭 -->
+        <section id="tab-notes" class="hidden space-y-6">
+            <div class="space-y-6">
+                <!-- 노트 헤더 배너 -->
+                <div class="bg-gradient-to-r from-[#1B4332] to-[#2D6A4F] text-white rounded-3xl p-6 md:p-8 shadow-lg">
+                    <div class="space-y-2">
+                        <span class="bg-[#E76F51] text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Shopping List</span>
+                        <h2 class="text-3xl md:text-4xl font-black leading-tight">장보기 노트</h2>
+                        <p class="text-emerald-100 text-sm md:text-base">다음 장보러갈 때 사야할 것들을 메모해놓으세요.</p>
+                    </div>
+                </div>
+
+                <!-- 노트 입력 -->
+                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-4">
+                    <div class="flex gap-3">
+                        <input type="text" id="note-input" placeholder="예: 계란 10개, 우유 1L, 당근..." class="flex-grow bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <button onclick="addNote()" class="bg-[#E76F51] hover:bg-[#d65f41] text-white px-6 py-3 rounded-xl font-bold text-sm transition-all flex items-center space-x-1">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>추가</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 노트 목록 -->
+                <div class="space-y-3" id="notes-list-container">
+                    <!-- 동적 렌더링 -->
+                </div>
+
+                <!-- 빈 상태 -->
+                <div id="notes-empty-state" class="text-center py-12 text-slate-400">
+                    <p class="text-sm">아직 추가된 항목이 없습니다.</p>
+                </div>
+
+                <!-- 노트 동작 버튼들 -->
+                <div id="notes-actions" class="hidden flex gap-2 pt-4 flex-wrap">
+                    <button onclick="undoDeleteNote()" class="bg-blue-50 hover:bg-blue-100 text-blue-600 px-4 py-3 rounded-xl font-bold text-xs transition-all flex items-center gap-1">
+                        <i class="fa-solid fa-rotate-left"></i> 되돌리기
+                    </button>
+                    <button onclick="copyNotesToClipboard()" class="flex-1 bg-[#1B4332] hover:bg-[#122e22] text-white px-4 py-3 rounded-xl font-bold text-xs transition-all">
+                        <i class="fa-solid fa-copy mr-1"></i> 클립보드 복사
+                    </button>
+                    <button onclick="captureNotes()" class="bg-[#E76F51] hover:bg-[#d65f41] text-white px-4 py-3 rounded-xl font-bold text-xs transition-all flex items-center gap-1">
+                        <i class="fa-solid fa-camera"></i> 스크린샷
+                    </button>
+                    <button onclick="clearAllNotes()" class="bg-rose-50 hover:bg-rose-100 text-rose-600 px-4 py-3 rounded-xl font-bold text-xs transition-all flex items-center gap-1">
+                        <i class="fa-solid fa-trash"></i> 모두 삭제
                     </button>
                 </div>
             </div>
         </section>
 
-        <!-- 4. 이용자 후기 탭 (REALTIME REVIEWS & VOC) -->
+        <!-- 5. 이용자 후기 탭 (REALTIME REVIEWS & VOC) -->
         <section id="tab-reviews" class="hidden space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <!-- ① 왼쪽: 리뷰 통계 및 후기 남기기 -->
@@ -518,6 +606,25 @@
                     <label class="text-xs font-bold text-slate-600">유통 및 소비 보존 기한</label>
                     <input type="date" id="add-expiry" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none">
                 </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-slate-600">개수</label>
+                        <input type="number" id="add-quantity" placeholder="예: 5" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500" min="0">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-slate-600">단위</label>
+                        <select id="add-unit" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none">
+                            <option value="개">개</option>
+                            <option value="g">g</option>
+                            <option value="kg">kg</option>
+                            <option value="ml">ml</option>
+                            <option value="L">L</option>
+                            <option value="병">병</option>
+                            <option value="팩">팩</option>
+                            <option value="근">근</option>
+                        </select>
+                    </div>
+                </div>
                 <button onclick="addNewIngredient()" class="w-full bg-[#1B4332] hover:bg-[#122e22] text-white py-3 rounded-xl font-bold text-xs transition-all">
                     내 보관함에 등록 완료
                 </button>
@@ -740,8 +847,15 @@
             ingredients: [],
             currentFilter: "ALL",
             weeklyPlanner: [],
+            weeklyPlanners: {
+                general: [],
+                bulking: [],
+                diet: []
+            },
             reviews: [],
             blogs: [],
+            notes: [],
+            plannerGoal: "general",
             currentWriteRating: 5,
             currentTab: "dashboard"
         };
@@ -778,14 +892,30 @@
             const localIngredients = localStorage.getItem('todays_table_ingredients');
             state.ingredients = cleanIngredientsArray(localIngredients ? JSON.parse(localIngredients) : [...defaultIngredients]);
 
-            const localPlanner = localStorage.getItem('todays_table_planner');
-            state.weeklyPlanner = ensureArray(localPlanner ? JSON.parse(localPlanner) : JSON.parse(JSON.stringify(defaultPlanner)));
-            if (state.weeklyPlanner.length === 0) {
-                state.weeklyPlanner = JSON.parse(JSON.stringify(defaultPlanner));
-            }
+            // 목표별 식단 로드
+            const localPlannerGeneral = localStorage.getItem('todays_table_planner_general');
+            const localPlannerBulking = localStorage.getItem('todays_table_planner_bulking');
+            const localPlannerDiet = localStorage.getItem('todays_table_planner_diet');
+
+            state.weeklyPlanners.general = ensureArray(localPlannerGeneral ? JSON.parse(localPlannerGeneral) : JSON.parse(JSON.stringify(defaultPlanner)));
+            state.weeklyPlanners.bulking = ensureArray(localPlannerBulking ? JSON.parse(localPlannerBulking) : JSON.parse(JSON.stringify(defaultPlanner)));
+            state.weeklyPlanners.diet = ensureArray(localPlannerDiet ? JSON.parse(localPlannerDiet) : JSON.parse(JSON.stringify(defaultPlanner)));
+
+            if (state.weeklyPlanners.general.length === 0) state.weeklyPlanners.general = JSON.parse(JSON.stringify(defaultPlanner));
+            if (state.weeklyPlanners.bulking.length === 0) state.weeklyPlanners.bulking = JSON.parse(JSON.stringify(defaultPlanner));
+            if (state.weeklyPlanners.diet.length === 0) state.weeklyPlanners.diet = JSON.parse(JSON.stringify(defaultPlanner));
 
             const localBlogs = localStorage.getItem('todays_table_blogs');
             state.blogs = ensureArray(localBlogs ? JSON.parse(localBlogs) : []);
+
+            const localNotes = localStorage.getItem('todays_table_notes');
+            state.notes = ensureArray(localNotes ? JSON.parse(localNotes) : []);
+
+            const localGoal = localStorage.getItem('todays_table_planner_goal');
+            state.plannerGoal = localGoal || 'general';
+
+            // 현재 목표에 따라 weeklyPlanner 설정
+            state.weeklyPlanner = JSON.parse(JSON.stringify(state.weeklyPlanners[state.plannerGoal]));
 
             const localTab = localStorage.getItem('todays_table_tab');
             state.currentTab = localTab || 'dashboard';
@@ -798,9 +928,15 @@
             } else if (key === 'ingredients') {
                 localStorage.setItem('todays_table_ingredients', JSON.stringify(state.ingredients));
             } else if (key === 'planner') {
-                localStorage.setItem('todays_table_planner', JSON.stringify(state.weeklyPlanner));
+                // 현재 목표에 따라 각각 저장
+                state.weeklyPlanners[state.plannerGoal] = JSON.parse(JSON.stringify(state.weeklyPlanner));
+                localStorage.setItem(`todays_table_planner_${state.plannerGoal}`, JSON.stringify(state.weeklyPlanner));
             } else if (key === 'blogs') {
                 localStorage.setItem('todays_table_blogs', JSON.stringify(state.blogs));
+            } else if (key === 'notes') {
+                localStorage.setItem('todays_table_notes', JSON.stringify(state.notes));
+            } else if (key === 'goal') {
+                localStorage.setItem('todays_table_planner_goal', state.plannerGoal);
             }
         }
 
@@ -1058,6 +1194,7 @@
             document.getElementById('tab-dashboard').classList.add('hidden');
             document.getElementById('tab-fridge').classList.add('hidden');
             document.getElementById('tab-planner').classList.add('hidden');
+            document.getElementById('tab-notes').classList.add('hidden');
             document.getElementById('tab-blog').classList.add('hidden');
             document.getElementById('tab-reviews').classList.add('hidden');
 
@@ -1109,7 +1246,11 @@
                     lockedView.classList.add('hidden');
                     unlockedView.classList.remove('hidden');
                     renderPlanner();
+                    renderFridgeSummary();
+                    updatePlannerGoalButtons();
                 }
+            } else if (tabId === 'notes') {
+                renderNotes();
             } else if (tabId === 'blog') {
                 // 대표 계정만 공지 작성 버튼 표시
                 const adminBtn = document.getElementById('admin-notice-btn');
@@ -1272,6 +1413,7 @@
                             <div>
                                 <h4 class="font-bold text-slate-800 text-sm">${item.name}</h4>
                                 <p class="text-[10px] text-slate-400">기한: ${item.expiry}</p>
+                                <p class="text-[10px] text-slate-500 mt-1"><i class="fa-solid fa-cube text-emerald-600 mr-1"></i>${item.quantity || '1'}${item.unit || '개'}</p>
                             </div>
                         </div>
 
@@ -1336,6 +1478,8 @@
             const name = document.getElementById('add-name').value.trim();
             const category = document.getElementById('add-category').value;
             const expiry = document.getElementById('add-expiry').value;
+            const quantity = document.getElementById('add-quantity').value || '1';
+            const unit = document.getElementById('add-unit').value || '개';
 
             if (!name) {
                 showToast("식재료 명칭을 정확히 입력해 주세요.", "error");
@@ -1348,14 +1492,16 @@
                 ? Math.max(...validIngredients.filter(i => i && i.id).map(i => parseInt(i.id) || 0)) + 1 
                 : 1;
                 
-            state.ingredients.push({ id: String(newId), name, category, expiry });
+            state.ingredients.push({ id: String(newId), name, category, expiry, quantity: String(quantity), unit });
             
             persistData('ingredients');
             closeAddIngredientModal();
             renderFridge();
-            showToast(`'${name}' 식재료를 보관함에 등록했습니다.`);
+            showToast(`'${name}' ${quantity}${unit} 식재료를 보관함에 등록했습니다.`);
             
             document.getElementById('add-name').value = '';
+            document.getElementById('add-quantity').value = '1';
+            document.getElementById('add-unit').value = '개';
         }
 
         function removeIngredient(id) {
@@ -1395,7 +1541,7 @@
                         <div class="space-y-2">
                             <div class="flex items-center justify-between">
                                 <span class="text-xs font-extrabold text-[#1B4332]">${item.day}</span>
-                                ${isToday ? '<span class="bg-[#E76F51] text-white text-[9px] font-black px-1.5 py-0.5 rounded">오늘</span>' : ''}
+                                ${isToday ? '<span class="today-badge bg-[#E76F51] text-white text-[9px] font-black px-1.5 py-0.5 rounded">오늘</span>' : ''}
                             </div>
                             <hr class="border-slate-100">
                         </div>
@@ -1415,8 +1561,7 @@
                             </div>
                         </div>
 
-                        <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
-                            <span class="text-[8px] text-emerald-600 font-bold"><i class="fa-solid fa-circle-check mr-0.5"></i>식생활 설계</span>
+                        <div class="pt-2 border-t border-slate-100 flex items-center justify-end">
                             <button onclick="openEditMealModal(${idx})" class="text-[10px] text-[#E76F51] font-bold hover:underline flex items-center space-x-0.5">
                                 <i class="fa-solid fa-pen-to-square"></i>
                                 <span>식단 편집</span>
@@ -1857,6 +2002,368 @@
             writerInput.value = '';
             contentInput.value = '';
             setReviewRating(5);
+        }
+
+        // ============================================
+        // NOTES CONTROLLER (장보기 노트)
+        // ============================================
+        let lastDeletedNote = null; // 마지막 삭제된 노트 저장 (되돌리기용)
+
+        function renderNotes() {
+            const container = document.getElementById('notes-list-container');
+            const emptyState = document.getElementById('notes-empty-state');
+            const actionsContainer = document.getElementById('notes-actions');
+            
+            container.innerHTML = '';
+            
+            if (state.notes.length === 0) {
+                emptyState.classList.remove('hidden');
+                actionsContainer.classList.add('hidden');
+                return;
+            }
+            
+            emptyState.classList.add('hidden');
+            actionsContainer.classList.remove('hidden');
+            
+            state.notes.forEach((note, index) => {
+                const noteEl = document.createElement('div');
+                noteEl.className = `bg-white rounded-2xl border-2 shadow-sm p-3 flex items-center justify-between hover:shadow-md transition-all ${
+                    note.completed ? 'border-emerald-200 bg-emerald-50' : 'border-slate-100'
+                }`;
+                
+                noteEl.innerHTML = `
+                    <div class="flex items-center gap-3 flex-grow">
+                        <div class="relative w-6 h-6">
+                            <input type="checkbox" id="note-${index}" class="w-6 h-6 rounded-md cursor-pointer appearance-none border-2 border-slate-300 checked:border-emerald-600 checked:bg-emerald-600 transition-all" 
+                                ${note.completed ? 'checked' : ''} 
+                                onchange="toggleNote(${index}, this.checked)">
+                            <i class="fa-solid fa-check absolute top-1 left-1.5 text-white text-xs pointer-events-none ${note.completed ? 'block' : 'hidden'}"></i>
+                        </div>
+                        <span class="text-sm text-slate-700 flex-grow ${note.completed ? 'line-through text-slate-400' : ''}">${note.text}</span>
+                    </div>
+                    <button onclick="deleteNote(${index})" class="text-slate-300 hover:text-rose-500 transition-colors ml-2 flex-shrink-0" title="삭제">
+                        <i class="fa-solid fa-trash-can text-sm"></i>
+                    </button>
+                `;
+                
+                container.appendChild(noteEl);
+            });
+        }
+
+        function addNote() {
+            const input = document.getElementById('note-input');
+            const text = input.value.trim();
+            
+            if (!text) {
+                showToast("메모를 입력해주세요.", "error");
+                return;
+            }
+            
+            state.notes.push({ text, completed: false });
+            saveLocal('notes');
+            renderNotes();
+            input.value = '';
+            input.focus();
+        }
+
+        function toggleNote(index, completed) {
+            if (state.notes[index]) {
+                state.notes[index].completed = completed;
+                saveLocal('notes');
+                renderNotes();
+            }
+        }
+
+        function deleteNote(index) {
+            const deletedNote = state.notes[index];
+            lastDeletedNote = { note: deletedNote, index: index };
+            
+            state.notes.splice(index, 1);
+            saveLocal('notes');
+            renderNotes();
+            
+            // 되돌리기 버튼 표시
+            showToast(`'${deletedNote.text}' 삭제됨`, "info");
+            
+            // 3초 후 되돌리기 불가능하게
+            setTimeout(() => {
+                lastDeletedNote = null;
+            }, 5000);
+        }
+
+        function undoDeleteNote() {
+            if (lastDeletedNote) {
+                state.notes.splice(lastDeletedNote.index, 0, lastDeletedNote.note);
+                saveLocal('notes');
+                renderNotes();
+                lastDeletedNote = null;
+                showToast("메모가 복구되었습니다!");
+            } else {
+                showToast("복구할 항목이 없습니다.", "error");
+            }
+        }
+
+        function clearAllNotes() {
+            showCustomConfirm(
+                "노트 초기화",
+                "모든 메모를 삭제하시겠습니까?",
+                () => {
+                    state.notes = [];
+                    saveLocal('notes');
+                    renderNotes();
+                    showToast("모든 메모가 삭제되었습니다.");
+                }
+            );
+        }
+
+        function copyNotesToClipboard() {
+            if (state.notes.length === 0) {
+                showToast("복사할 메모가 없습니다.", "error");
+                return;
+            }
+            
+            const text = state.notes.map(n => (n.completed ? '✓ ' : '○ ') + n.text).join('\n');
+            navigator.clipboard.writeText(text).then(() => {
+                showToast("메모가 클립보드에 복사되었습니다!");
+            }).catch(() => {
+                showToast("복사에 실패했습니다.", "error");
+            });
+        }
+
+        function captureNotes() {
+            if (state.notes.length === 0) {
+                showToast("캡쳐할 항목이 없습니다.", "error");
+                return;
+            }
+
+            const notesSection = document.getElementById('notes-list-container');
+            if (!notesSection) {
+                showToast("캡쳐할 노트가 없습니다.", "error");
+                return;
+            }
+
+            showToast("스크린샷을 준비 중입니다...");
+
+            // 임시 wrapper 생성
+            const wrapper = document.createElement('div');
+            wrapper.style.padding = '30px';
+            wrapper.style.backgroundColor = '#ffffff';
+            
+            // 헤더 추가
+            const header = document.createElement('div');
+            header.style.marginBottom = '20px';
+            header.innerHTML = `
+                <h2 style="font-size: 24px; font-weight: bold; color: #1B4332; margin-bottom: 5px;">장보기 노트</h2>
+                <p style="font-size: 14px; color: #666; margin-bottom: 15px;">${new Date().toLocaleDateString('ko-KR', {year: 'numeric', month: 'long', day: 'numeric'})} 기준</p>
+            `;
+            wrapper.appendChild(header);
+            
+            // 노트 목록 복사
+            wrapper.appendChild(notesSection.cloneNode(true));
+            document.body.appendChild(wrapper);
+
+            html2canvas(wrapper, {
+                backgroundColor: '#ffffff',
+                scale: 1.5,
+                logging: false,
+                useCORS: true,
+                allowTaint: true
+            }).then(canvas => {
+                // 임시 wrapper 제거
+                document.body.removeChild(wrapper);
+
+                // 다운로드 링크 생성
+                const link = document.createElement('a');
+                link.href = canvas.toDataURL('image/png');
+                link.download = `장보기노트_${new Date().toISOString().split('T')[0]}.png`;
+                link.click();
+                showToast("장보기 노트 스크린샷이 다운로드되었습니다!");
+            }).catch(err => {
+                // 에러 발생 시 정리
+                if (document.body.contains(wrapper)) {
+                    document.body.removeChild(wrapper);
+                }
+
+                console.error('캡쳐 실패:', err);
+                showToast("스크린샷 생성에 실패했습니다.", "error");
+            });
+        }
+
+        // 엔터키로 노트 추가
+        document.addEventListener('DOMContentLoaded', function() {
+            const noteInput = document.getElementById('note-input');
+            if (noteInput) {
+                noteInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') addNote();
+                });
+            }
+        });
+
+        // ============================================
+        // PLANNER ENHANCEMENTS (식단표 기능 확장)
+        // ============================================
+        function setPlannerGoal(goal) {
+            // 현재 식단 저장
+            state.weeklyPlanners[state.plannerGoal] = JSON.parse(JSON.stringify(state.weeklyPlanner));
+            localStorage.setItem(`todays_table_planner_${state.plannerGoal}`, JSON.stringify(state.weeklyPlanner));
+            
+            // 새로운 목표로 변경
+            state.plannerGoal = goal;
+            state.weeklyPlanner = JSON.parse(JSON.stringify(state.weeklyPlanners[goal]));
+            
+            saveLocal('goal');
+            renderPlanner();
+            updatePlannerGoalButtons();
+            showToast(`식단 목표를 '${goal === 'general' ? '일반식' : goal === 'bulking' ? '벌크업' : '다이어트'}'로 변경했습니다.`);
+        }
+
+        function updatePlannerGoalButtons() {
+            document.querySelectorAll('.goal-btn').forEach(btn => {
+                const btnGoal = btn.getAttribute('data-goal');
+                if (btnGoal === state.plannerGoal) {
+                    btn.classList.remove('bg-slate-200', 'text-slate-600');
+                    btn.classList.add('bg-[#1B4332]', 'text-white');
+                } else {
+                    btn.classList.remove('bg-[#1B4332]', 'text-white');
+                    btn.classList.add('bg-slate-200', 'text-slate-600');
+                }
+            });
+        }
+
+        function renderFridgeSummary() {
+            const container = document.getElementById('fridge-summary-container');
+            const emptyState = document.getElementById('fridge-summary-empty');
+            
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            if (!state.ingredients || state.ingredients.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            
+            emptyState.classList.add('hidden');
+            
+            const validIngredients = cleanIngredientsArray(state.ingredients);
+            
+            validIngredients.slice(0, 12).forEach(item => {
+                const dDay = calculateDDay(item.expiry);
+                let urgencyColor = 'text-emerald-600';
+                let urgencyBg = 'bg-emerald-50';
+                
+                if (dDay <= 1) {
+                    urgencyColor = 'text-rose-600';
+                    urgencyBg = 'bg-rose-50';
+                } else if (dDay <= 3) {
+                    urgencyColor = 'text-amber-600';
+                    urgencyBg = 'bg-amber-50';
+                }
+                
+                const card = document.createElement('div');
+                card.className = `${urgencyBg} rounded-lg p-2 border border-slate-200 text-[11px]`;
+                card.innerHTML = `
+                    <div class="flex items-center justify-between gap-1">
+                        <div>
+                            <p class="font-bold text-slate-800 line-clamp-1">${item.name}</p>
+                            <p class="text-slate-600">${item.quantity || '1'}${item.unit || '개'}</p>
+                        </div>
+                        <div class="text-right whitespace-nowrap">
+                            <p class="text-slate-500 text-[9px]">기한</p>
+                            <p class="font-bold ${urgencyColor}">${item.expiry}</p>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+            
+            if (validIngredients.length > 12) {
+                const more = document.createElement('div');
+                more.className = 'bg-slate-50 rounded-lg p-2 border border-slate-200 text-center';
+                more.innerHTML = `<p class="text-[11px] text-slate-600">외 ${validIngredients.length - 12}개 항목</p>`;
+                container.appendChild(more);
+            }
+        }
+
+        function captureWeeklyPlanner() {
+            const element = document.getElementById('weekly-calendar');
+            if (!element) {
+                showToast("캡쳐할 식단표가 없습니다.", "error");
+                return;
+            }
+            
+            showToast("스크린샷을 준비 중입니다...");
+            
+            // '오늘' 배지 숨기기
+            const todayBadges = document.querySelectorAll('.today-badge');
+            todayBadges.forEach(badge => {
+                badge.style.display = 'none';
+            });
+            
+            // line-clamp 임시 제거
+            const clampedElements = document.querySelectorAll('.line-clamp-2');
+            clampedElements.forEach(el => {
+                el.style.overflow = 'visible';
+                el.style.whiteSpace = 'normal';
+                el.classList.remove('line-clamp-2');
+            });
+            
+            // 임시 wrapper 생성해서 더 큰 영역으로 캡처
+            const wrapper = document.createElement('div');
+            wrapper.style.padding = '30px';
+            wrapper.style.backgroundColor = '#ffffff';
+            wrapper.appendChild(element.cloneNode(true));
+            document.body.appendChild(wrapper);
+            
+            html2canvas(wrapper, {
+                backgroundColor: '#ffffff',
+                scale: 1.5,
+                logging: false,
+                useCORS: true,
+                allowTaint: true
+            }).then(canvas => {
+                // 임시 wrapper 제거
+                document.body.removeChild(wrapper);
+                
+                // line-clamp 복구
+                clampedElements.forEach(el => {
+                    el.style.overflow = '';
+                    el.style.whiteSpace = '';
+                    el.classList.add('line-clamp-2');
+                });
+                
+                // '오늘' 배지 다시 보이기
+                todayBadges.forEach(badge => {
+                    badge.style.display = '';
+                });
+                
+                // 다운로드 링크 생성
+                const link = document.createElement('a');
+                link.href = canvas.toDataURL('image/png');
+                link.download = `주간식단표_${new Date().toISOString().split('T')[0]}.png`;
+                link.click();
+                showToast("식단표 스크린샷이 다운로드되었습니다!");
+            }).catch(err => {
+                // 에러 발생 시 정리
+                if (document.body.contains(wrapper)) {
+                    document.body.removeChild(wrapper);
+                }
+                
+                // line-clamp 복구
+                clampedElements.forEach(el => {
+                    el.style.overflow = '';
+                    el.style.whiteSpace = '';
+                    el.classList.add('line-clamp-2');
+                });
+                
+                // '오늘' 배지 다시 보이기
+                todayBadges.forEach(badge => {
+                    badge.style.display = '';
+                });
+                
+                console.error('캡쳐 실패:', err);
+                showToast("스크린샷 생성에 실패했습니다.", "error");
+            });
         }
 
         // ============================================
