@@ -51,6 +51,22 @@
         .animate-toast {
             animation: slideIn 0.3s ease-out forwards;
         }
+        /* 모바일 하단 탭 바 */
+        .mobile-nav-btn {
+            color: #94a3b8;
+        }
+        .mobile-nav-btn.active {
+            color: #1B4332;
+        }
+        .mobile-nav-btn.active i {
+            transform: scale(1.15);
+        }
+        /* 모바일에서 하단 탭 바 높이만큼 본문 패딩 추가 */
+        @media (max-width: 767px) {
+            main {
+                padding-bottom: 5rem !important;
+            }
+        }
     </style>
 </head>
 <body class="min-h-screen text-slate-800 flex flex-col antialiased">
@@ -589,6 +605,36 @@
             </div>
         </div>
     </footer>
+
+    <!-- 모바일 전용 하단 네비게이션 바 -->
+    <nav id="mobile-bottom-nav" class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 shadow-[0_-2px_12px_rgba(0,0,0,0.08)]">
+        <div class="grid grid-cols-6 h-16">
+            <button onclick="navigate('dashboard')" class="mobile-nav-btn flex flex-col items-center justify-center space-y-0.5 transition-colors" id="mob-nav-dashboard">
+                <i class="fa-solid fa-house text-base"></i>
+                <span class="text-[9px] font-bold">홈</span>
+            </button>
+            <button onclick="navigate('fridge')" class="mobile-nav-btn flex flex-col items-center justify-center space-y-0.5 transition-colors" id="mob-nav-fridge">
+                <i class="fa-solid fa-refrigerator text-base"></i>
+                <span class="text-[9px] font-bold">냉장고</span>
+            </button>
+            <button onclick="navigate('planner')" class="mobile-nav-btn flex flex-col items-center justify-center space-y-0.5 transition-colors" id="mob-nav-planner">
+                <i class="fa-solid fa-calendar-days text-base"></i>
+                <span class="text-[9px] font-bold">식단</span>
+            </button>
+            <button onclick="navigate('notes')" class="mobile-nav-btn flex flex-col items-center justify-center space-y-0.5 transition-colors" id="mob-nav-notes">
+                <i class="fa-solid fa-cart-shopping text-base"></i>
+                <span class="text-[9px] font-bold">장보기</span>
+            </button>
+            <button onclick="navigate('blog')" class="mobile-nav-btn flex flex-col items-center justify-center space-y-0.5 transition-colors" id="mob-nav-blog">
+                <i class="fa-solid fa-pen-nib text-base"></i>
+                <span class="text-[9px] font-bold">블로그</span>
+            </button>
+            <button onclick="navigate('reviews')" class="mobile-nav-btn flex flex-col items-center justify-center space-y-0.5 transition-colors" id="mob-nav-reviews">
+                <i class="fa-solid fa-star text-base"></i>
+                <span class="text-[9px] font-bold">후기</span>
+            </button>
+        </div>
+    </nav>
 
     <!-- ============================================ -->
     <!-- MODALS & LAYER STRUCTURES -->
@@ -1245,6 +1291,13 @@
                 activeLink.classList.remove('text-emerald-100');
                 activeLink.classList.add('text-white', 'font-bold', 'border-b-2', 'border-[#E76F51]', 'pb-1');
             }
+
+            // 모바일 하단 탭 바 active 상태 업데이트
+            document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            const activeMobBtn = document.getElementById(`mob-nav-${tabId}`);
+            if (activeMobBtn) activeMobBtn.classList.add('active');
 
             // 각 탭별 인가 권한 가드 적용
             if (tabId === 'dashboard') {
