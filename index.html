@@ -2598,6 +2598,27 @@
             currentBlogWriteType = 'general';
         }
 
+        // 블로그 본문 텍스트에서 URL을 자동으로 클릭 가능한 링크로 변환
+        function renderBlogContent(text) {
+            // XSS 방지: HTML 특수문자 먼저 이스케이프
+            const escaped = text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+
+            // URL 패턴 감지 후 <a> 태그로 변환 (쿠팡 파트너스 링크 등)
+            const linked = escaped.replace(
+                /(https?:\/\/[^\s]+)/g,
+                '<a href="$1" target="_blank" rel="noopener noreferrer" ' +
+                'style="color:#E76F51; text-decoration:underline; word-break:break-all;" ' +
+                'onclick="event.stopPropagation()">$1</a>'
+            );
+
+            // 줄바꿈을 <br>로 변환
+            return linked.replace(/\n/g, '<br>');
+        }
+
         function saveBlogPost() {
             const title = document.getElementById('blog-write-title').value.trim();
             const author = document.getElementById('blog-write-author').value.trim();
@@ -2686,7 +2707,7 @@
                 categorySpan.classList.add('bg-emerald-50', 'text-emerald-700');
             }
             
-            document.getElementById('blog-detail-content').innerText = blog.content;
+            document.getElementById('blog-detail-content').innerHTML = renderBlogContent(blog.content);
 
             // 본인 글이거나 관리자일 때 삭제 버튼 표시
             const deleteBtn = document.getElementById('blog-delete-btn');
@@ -2763,11 +2784,11 @@
 
         // 이메일 복사 함수
         function showEmailCopy() {
-            const email = 'naver082932@gmail.com';
+            const email = 'google082932@naver.com';
             navigator.clipboard.writeText(email).then(() => {
-                showToast("naver082932@gmail.com 복사되었습니다!");
+                showToast("google082932@naver.com 복사되었습니다!");
             }).catch(() => {
-                alert('naver082932@gmail.com');
+                alert('google082932@naver.com');
             });
         }
 
